@@ -139,6 +139,8 @@ uv run alembic upgrade head
 | `POST /api/auth/verify-magic-link` | Connexion via token magic link |
 | `POST /api/auth/request-otp` | Demande code OTP email (6 chiffres) |
 | `POST /api/auth/verify-otp` | Connexion via code OTP email |
+| `GET /api/auth/google` | Démarre Google OAuth (redirect + cookie state) |
+| `GET /api/auth/google/callback` | Callback Google OAuth → session JWT |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \

@@ -12,6 +12,13 @@ class UserStatus(StrEnum):
     DELETED = "deleted"
 
 
+class AuthProvider(StrEnum):
+    """Identity provider for the user account."""
+
+    LOCAL = "local"
+    GOOGLE = "google"
+
+
 class GlobalRole(StrEnum):
     """Platform-wide role carried by User (not organization-specific)."""
 

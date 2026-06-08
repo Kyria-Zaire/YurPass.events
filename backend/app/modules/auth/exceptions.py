@@ -43,3 +43,17 @@ class InvalidOtpError(YurPassError):
 
     def __init__(self) -> None:
         super().__init__(message="invalid_otp", code="invalid_otp")
+
+
+class OAuthStateError(YurPassError):
+    """OAuth state is missing or invalid."""
+
+    def __init__(self) -> None:
+        super().__init__(message="Invalid OAuth state", code="invalid_oauth_state")
+
+
+class OAuthGoogleError(YurPassError):
+    """Google OAuth flow failed."""
+
+    def __init__(self, message: str = "Google OAuth failed") -> None:
+        super().__init__(message=message, code="oauth_google_error")

@@ -1,5 +1,6 @@
 ﻿"""Authentication business logic."""
 
+import secrets
 import uuid
 
 from app.core.config import Settings
@@ -12,10 +13,13 @@ from app.modules.auth.exceptions import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     InvalidOtpError,
+    OAuthGoogleError,
+    OAuthStateError,
     RefreshTokenError,
 )
 from app.modules.auth.models import User
-from app.modules.auth.password import hash_password, verify_password
+from app.modules.auth.oauth_google import GoogleOAuthClient, GoogleUserInfo
+from app.modules.auth.password import google_oauth_password_hash, hash_password, verify_password
 from app.modules.auth.refresh_repository import RefreshTokenRepository
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.schemas import (
@@ -50,11 +54,13 @@ class AuthService:
         refresh_repository: RefreshTokenRepository,
         auth_token_repository: AuthTokenRepository,
         settings: Settings,
+        google_oauth_client: GoogleOAuthClient | None = None,
     ) -> None:
         self._repository = repository
         self._refresh_repository = refresh_repository
         self._auth_token_repository = auth_token_repository
         self._settings = settings
+        self._google_oauth = google_oauth_client or GoogleOAuthClient(settings)
 
     def register(
         self,
@@ -308,6 +314,59 @@ class AuthService:
 
         user = self._repository.update_last_login(user)
         return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+
+    def start_google_oauth(self) -> tuple[str, str]:
+        """Build Google authorization redirect URL and CSRF state."""
+        state = generate_opaque_token()
+        redirect_url = self._google_oauth.build_authorization_url(state)
+        return redirect_url, state
+
+    def complete_google_oauth(
+        self,
+        *,
+        code: str,
+        state: str | None,
+        cookie_state: str | None,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[LoginResponse, str]:
+        """Validate OAuth state, authenticate with Google, and issue session."""
+        if not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
+            raise OAuthStateError()
+
+        google_user = self._google_oauth.authenticate_with_code(code)
+        user = self._resolve_google_user(google_user)
+
+        if user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            raise AccountInactiveError(status=user.status.value)
+
+        user = self._repository.update_last_login(user)
+        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+
+    def _resolve_google_user(self, google_user: GoogleUserInfo) -> User:
+        """Find, link, or create a user from Google userinfo."""
+        user = self._repository.get_by_google_sub(google_user.sub)
+        if user is not None:
+            return user
+
+        user = self._repository.get_by_email(google_user.email)
+        if user is not None:
+            if user.google_sub is not None and user.google_sub != google_user.sub:
+                raise OAuthGoogleError("Google account conflict")
+            return self._repository.link_google_account(
+                user,
+                google_sub=google_user.sub,
+                full_name=google_user.name,
+                avatar_url=google_user.picture,
+            )
+
+        return self._repository.create_google_user(
+            email=google_user.email,
+            google_sub=google_user.sub,
+            password_hash=google_oauth_password_hash(),
+            full_name=google_user.name,
+            avatar_url=google_user.picture,
+        )
 
     def _issue_session(
         self,

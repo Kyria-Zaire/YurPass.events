@@ -25,3 +25,25 @@ def clear_refresh_cookie(response: Response, settings: Settings) -> None:
         key=settings.refresh_cookie_name,
         path="/api/auth",
     )
+
+
+def set_oauth_state_cookie(response: Response, state: str, settings: Settings) -> None:
+    """Set the HttpOnly OAuth state cookie."""
+    max_age = settings.oauth_state_expire_minutes * 60
+    response.set_cookie(
+        key=settings.oauth_state_cookie_name,
+        value=state,
+        max_age=max_age,
+        httponly=True,
+        secure=settings.is_production,
+        samesite="lax",
+        path="/api/auth",
+    )
+
+
+def clear_oauth_state_cookie(response: Response, settings: Settings) -> None:
+    """Remove the OAuth state cookie."""
+    response.delete_cookie(
+        key=settings.oauth_state_cookie_name,
+        path="/api/auth",
+    )

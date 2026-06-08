@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.modules.auth.constants import GlobalRole, UserStatus
+from app.modules.auth.constants import AuthProvider, GlobalRole, UserStatus
 
 
 class User(Base):
@@ -60,6 +60,13 @@ class User(Base):
         onupdate=func.now(),
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    auth_provider: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default=AuthProvider.LOCAL.value,
+        server_default=AuthProvider.LOCAL.value,
+    )
+    google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
 
 class RefreshToken(Base):

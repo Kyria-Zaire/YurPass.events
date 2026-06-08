@@ -21,3 +21,11 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return _hasher.verify(password_hash, plain_password)
     except VerifyMismatchError:
         return False
+
+
+_GOOGLE_OAUTH_PASSWORD_SENTINEL = "__GOOGLE_OAUTH_NO_LOCAL_PASSWORD__"
+
+
+def google_oauth_password_hash() -> str:
+    """Return a non-empty unusable password hash for Google-only accounts."""
+    return hash_password(_GOOGLE_OAUTH_PASSWORD_SENTINEL)

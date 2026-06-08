@@ -12,6 +12,8 @@ from app.modules.auth.exceptions import (
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     InvalidOtpError,
+    OAuthGoogleError,
+    OAuthStateError,
     RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
@@ -76,6 +78,22 @@ async def invalid_otp_error_handler(
     exc: InvalidOtpError,
 ) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(OAuthStateError)
+async def oauth_state_error_handler(
+    _request: Request,
+    exc: OAuthStateError,
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(OAuthGoogleError)
+async def oauth_google_error_handler(
+    _request: Request,
+    exc: OAuthGoogleError,
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

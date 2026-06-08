@@ -1,12 +1,18 @@
 ﻿"""Authentication HTTP routes."""
 
 from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.modules.auth.auth_token_repository import AuthTokenRepository
-from app.modules.auth.cookies import clear_refresh_cookie, set_refresh_cookie
+from app.modules.auth.cookies import (
+    clear_oauth_state_cookie,
+    clear_refresh_cookie,
+    set_oauth_state_cookie,
+    set_refresh_cookie,
+)
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
 from app.modules.auth.refresh_repository import RefreshTokenRepository
@@ -212,5 +218,40 @@ def verify_otp(
         user_agent=request.headers.get("user-agent"),
         ip_address=_client_ip(request),
     )
+    set_refresh_cookie(response, plain_refresh, settings)
+    return login_response
+
+
+@router.get("/google")
+def google_oauth_start(
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    """Start Google OAuth Authorization Code Flow."""
+    redirect_url, state = service.start_google_oauth()
+    redirect = RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+    set_oauth_state_cookie(redirect, state, settings)
+    return redirect
+
+
+@router.get("/google/callback", response_model=LoginResponse)
+def google_oauth_callback(
+    code: str,
+    state: str,
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> LoginResponse:
+    """Complete Google OAuth and issue application session."""
+    cookie_state = request.cookies.get(settings.oauth_state_cookie_name)
+    login_response, plain_refresh = service.complete_google_oauth(
+        code=code,
+        state=state,
+        cookie_state=cookie_state,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=_client_ip(request),
+    )
+    clear_oauth_state_cookie(response, settings)
     set_refresh_cookie(response, plain_refresh, settings)
     return login_response
