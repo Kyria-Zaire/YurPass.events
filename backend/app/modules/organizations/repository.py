@@ -65,6 +65,72 @@ class OrganizationRepository:
         self._session.refresh(organization)
         return organization
 
+    def list_for_active_member(self, user_id: uuid.UUID) -> list[Organization]:
+        """List non-archived organizations where the user is an active member."""
+        statement = (
+            select(Organization)
+            .join(
+                OrganizationMember,
+                OrganizationMember.organization_id == Organization.id,
+            )
+            .where(
+                OrganizationMember.user_id == user_id,
+                OrganizationMember.status == MemberStatus.ACTIVE,
+                Organization.status != OrganizationStatus.ARCHIVED,
+            )
+            .order_by(Organization.created_at)
+        )
+        return list(self._session.scalars(statement))
+
+    def list_all_non_archived(self) -> list[Organization]:
+        """List all non-archived organizations."""
+        statement = (
+            select(Organization)
+            .where(Organization.status != OrganizationStatus.ARCHIVED)
+            .order_by(Organization.created_at)
+        )
+        return list(self._session.scalars(statement))
+
+    def update(
+        self,
+        organization: Organization,
+        *,
+        name: str | None = None,
+        org_type: OrganizationType | None = None,
+        description: str | None = None,
+        logo_url: str | None = None,
+        website_url: str | None = None,
+        city: str | None = None,
+        country: str | None = None,
+    ) -> Organization:
+        """Apply partial field updates — slug is never modified here."""
+        if name is not None:
+            organization.name = name
+        if org_type is not None:
+            organization.type = org_type
+        if description is not None:
+            organization.description = description
+        if logo_url is not None:
+            organization.logo_url = logo_url
+        if website_url is not None:
+            organization.website_url = website_url
+        if city is not None:
+            organization.city = city
+        if country is not None:
+            organization.country = country
+        self._session.add(organization)
+        self._session.flush()
+        self._session.refresh(organization)
+        return organization
+
+    def archive(self, organization: Organization) -> Organization:
+        """Archive an organization logically."""
+        organization.status = OrganizationStatus.ARCHIVED
+        self._session.add(organization)
+        self._session.flush()
+        self._session.refresh(organization)
+        return organization
+
 
 class OrganizationMemberRepository:
     """Repository layer for OrganizationMember persistence."""

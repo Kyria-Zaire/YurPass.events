@@ -20,7 +20,8 @@ from app.modules.auth.exceptions import (
     RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
-from app.shared.exceptions import PermissionDeniedError
+from app.modules.organizations.router import router as organizations_router
+from app.shared.exceptions import NotFoundError, PermissionDeniedError
 from app.shared.responses import HealthResponse
 
 setup_logging()
@@ -37,6 +38,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(organizations_router, prefix="/api/organizations", tags=["organizations"])
 
 
 @app.exception_handler(EmailAlreadyRegisteredError)
@@ -109,6 +111,14 @@ async def permission_denied_handler(
     exc: PermissionDeniedError,
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(NotFoundError)
+async def not_found_handler(
+    _request: Request,
+    exc: NotFoundError,
+) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": exc.message, "code": exc.code})
 
 
 @app.exception_handler(RateLimitExceeded)

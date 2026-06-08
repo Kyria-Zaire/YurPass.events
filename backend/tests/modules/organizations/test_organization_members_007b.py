@@ -210,12 +210,13 @@ def test_organization_member_public_schema(db_session) -> None:
     assert public.status == MemberStatus.ACTIVE
 
 
-def test_no_organization_endpoints_exposed() -> None:
+def test_no_organization_members_endpoints_exposed() -> None:
     from app.main import app
 
-    org_paths = [
+    member_paths = [
         route.path
         for route in app.routes
-        if getattr(route, "path", "").startswith("/api/organizations")
+        if "/api/organizations" in getattr(route, "path", "")
+        and "/members" in getattr(route, "path", "")
     ]
-    assert org_paths == []
+    assert member_paths == []
