@@ -354,7 +354,7 @@ def test_audit_created_updated_archived(auth_client, db_session) -> None:
     assert AuditAction.ORGANIZATION_ARCHIVED.value in actions
 
 
-def test_no_members_endpoints_exposed() -> None:
+def test_members_endpoints_defined_in_007e() -> None:
     from app.main import app
 
     member_paths = [
@@ -363,4 +363,4 @@ def test_no_members_endpoints_exposed() -> None:
         if "/api/organizations" in getattr(route, "path", "")
         and "/members" in getattr(route, "path", "")
     ]
-    assert member_paths == []
+    assert len(member_paths) == 4

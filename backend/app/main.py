@@ -20,6 +20,7 @@ from app.modules.auth.exceptions import (
     RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
+from app.modules.organizations.exceptions import ConflictError
 from app.modules.organizations.router import router as organizations_router
 from app.shared.exceptions import NotFoundError, PermissionDeniedError
 from app.shared.responses import HealthResponse
@@ -119,6 +120,14 @@ async def not_found_handler(
     exc: NotFoundError,
 ) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_error_handler(
+    _request: Request,
+    exc: ConflictError,
+) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": exc.message, "code": exc.code})
 
 
 @app.exception_handler(RateLimitExceeded)

@@ -163,6 +163,30 @@ class OrganizationMemberRepository:
         )
         return list(self._session.scalars(statement))
 
+    def list_active_members(self, organization_id: uuid.UUID) -> list[OrganizationMember]:
+        """List active members for an organization."""
+        statement = (
+            select(OrganizationMember)
+            .where(
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.status == MemberStatus.ACTIVE,
+            )
+            .order_by(OrganizationMember.created_at)
+        )
+        return list(self._session.scalars(statement))
+
+    def get_member_by_id_and_org(
+        self,
+        member_id: uuid.UUID,
+        organization_id: uuid.UUID,
+    ) -> OrganizationMember | None:
+        """Return a membership scoped to an organization."""
+        statement = select(OrganizationMember).where(
+            OrganizationMember.id == member_id,
+            OrganizationMember.organization_id == organization_id,
+        )
+        return self._session.scalar(statement)
+
     def add_member(
         self,
         *,

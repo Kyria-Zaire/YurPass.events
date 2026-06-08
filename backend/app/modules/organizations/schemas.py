@@ -54,18 +54,23 @@ class OrganizationPublic(OrganizationBase):
     updated_at: datetime
 
 
-class OrganizationMemberCreate(BaseModel):
-    """Payload for adding an organization member."""
+class OrganizationMemberCreateRequest(BaseModel):
+    """Payload for POST /members — existing user only."""
 
     user_id: UUID
     role: OrganizationRole
 
 
-class OrganizationMemberUpdate(BaseModel):
-    """Payload for partial organization member updates."""
+class OrganizationMemberRoleUpdateRequest(BaseModel):
+    """Payload for PATCH /members/{member_id} — role only."""
 
-    role: OrganizationRole | None = None
-    status: MemberStatus | None = None
+    role: OrganizationRole
+
+
+class OrganizationMemberListResponse(BaseModel):
+    """List of organization members."""
+
+    members: list["OrganizationMemberPublic"]
 
 
 class OrganizationMemberPublic(BaseModel):

@@ -119,6 +119,37 @@ def require_org_member(
     return member
 
 
+def require_active_org_member_or_super_admin(
+    organization_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> OrgRoleAccess | SuperAdminOrgBypass:
+    """Require active membership or audited super_admin bypass — any org role."""
+    if user.global_role == GlobalRole.SUPER_ADMIN:
+        _audit_super_admin_bypass(
+            db,
+            user=user,
+            organization_id=organization_id,
+            allowed_roles=tuple(OrganizationRole),
+            permission_context="member:remove",
+        )
+        return SuperAdminOrgBypass(user=user, organization_id=organization_id)
+
+    member = _get_active_member(
+        OrganizationMemberRepository(db),
+        user.id,
+        organization_id,
+    )
+    if member is None:
+        raise PermissionDeniedError()
+    return OrgRoleAccess(
+        user=user,
+        organization_id=organization_id,
+        member=member,
+        is_super_admin_bypass=False,
+    )
+
+
 def require_org_roles(*allowed_roles: OrganizationRole):
     """Factory returning a dependency that checks organization roles."""
 
