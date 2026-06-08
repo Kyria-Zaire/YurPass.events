@@ -38,6 +38,14 @@ class UserPublic(BaseModel):
     last_login_at: datetime | None = None
 
 
+class TokenResponse(BaseModel):
+    """JWT access token payload — refresh token is cookie-only."""
+
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
 class RegisterResponse(BaseModel):
     """Successful registration response."""
 
@@ -45,7 +53,35 @@ class RegisterResponse(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Successful login response — tokens reserved for TICKET-006B."""
+    """Successful login response with access token."""
 
     user: UserPublic
-    tokens: None = None
+    tokens: TokenResponse
+
+
+class RefreshResponse(BaseModel):
+    """Successful refresh response."""
+
+    tokens: TokenResponse
+
+
+class LogoutResponse(BaseModel):
+    """Successful logout response."""
+
+    message: str = "logout_success"
+
+
+class MeResponse(BaseModel):
+    """Authenticated user profile — no organization data."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    email: EmailStr
+    full_name: str | None
+    status: UserStatus
+    global_role: GlobalRole
+    email_verified_at: datetime | None
+    last_login_at: datetime | None
+    created_at: datetime
+    updated_at: datetime

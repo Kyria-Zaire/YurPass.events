@@ -1,6 +1,7 @@
 ﻿"""Authentication data access."""
 
 from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,6 +19,11 @@ class AuthRepository:
     def get_by_email(self, email: str) -> User | None:
         """Return a user by normalized email, if any."""
         statement = select(User).where(User.email == email)
+        return self._session.scalar(statement)
+
+    def get_by_id(self, user_id: UUID) -> User | None:
+        """Return a user by primary key, if any."""
+        statement = select(User).where(User.id == user_id)
         return self._session.scalar(statement)
 
     def create_user(

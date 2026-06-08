@@ -10,6 +10,7 @@ from app.modules.auth.exceptions import (
     AccountInactiveError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
+    RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
 from app.shared.responses import HealthResponse
@@ -49,6 +50,14 @@ async def account_inactive_handler(
     exc: AccountInactiveError,
 ) -> JSONResponse:
     return JSONResponse(status_code=403, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(RefreshTokenError)
+async def refresh_token_error_handler(
+    _request: Request,
+    exc: RefreshTokenError,
+) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": exc.message, "code": exc.code})
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

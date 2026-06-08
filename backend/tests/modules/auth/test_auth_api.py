@@ -64,9 +64,11 @@ def test_login_success_updates_last_login(auth_client, db_session) -> None:
     payload = response.json()
     assert payload["user"]["email"] == email
     assert payload["user"]["last_login_at"] is not None
-    assert payload["tokens"] is None
-    assert "jwt" not in response.text.lower()
-    assert "refresh" not in response.text.lower()
+    assert payload["tokens"]["access_token"]
+    assert payload["tokens"]["token_type"] == "bearer"
+    assert payload["tokens"]["expires_in"] == 900
+    assert "password_hash" not in response.text
+    assert auth_client.cookies.get("yurpass_refresh_token")
 
 
 def test_login_invalid_password_returns_generic_401(auth_client, db_session) -> None:

@@ -22,3 +22,10 @@ class AccountInactiveError(YurPassError):
 
     def __init__(self, status: str) -> None:
         super().__init__(message=f"Account is {status}", code="account_inactive")
+
+
+class RefreshTokenError(YurPassError):
+    """Refresh token is missing, invalid, expired, or revoked."""
+
+    def __init__(self, message: str = "Invalid refresh token") -> None:
+        super().__init__(message=message, code="invalid_refresh_token")

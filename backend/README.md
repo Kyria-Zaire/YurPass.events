@@ -122,12 +122,15 @@ uv run alembic revision --autogenerate -m "description"
 uv run alembic upgrade head
 ```
 
-## Auth (TICKET-006A)
+## Auth (TICKET-006A / 006B)
 
 | Endpoint | Description |
 |----------|-------------|
 | `POST /api/auth/register` | Inscription email/mot de passe (Argon2id) |
-| `POST /api/auth/login` | Connexion — `tokens: null` jusqu'à TICKET-006B |
+| `POST /api/auth/login` | Connexion — JWT access + cookie refresh HttpOnly |
+| `POST /api/auth/refresh` | Rotation refresh token + nouvel access token |
+| `POST /api/auth/logout` | Révocation refresh + suppression cookie |
+| `GET /api/auth/me` | Profil utilisateur (Bearer token) |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \
