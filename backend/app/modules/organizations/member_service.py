@@ -1,13 +1,13 @@
 """Organization members business logic — TICKET-007E."""
 
 import uuid
-from typing import Any
 
 from app.modules.audit.constants import AuditAction
 from app.modules.audit.service import AuditService
 from app.modules.auth.constants import GlobalRole
 from app.modules.auth.models import User
 from app.modules.auth.repository import AuthRepository
+from app.modules.organizations.audit import record_member_audit, resolve_actor_role
 from app.modules.organizations.constants import MemberStatus, OrganizationRole
 from app.modules.organizations.exceptions import (
     LastOwnerProtectedError,
@@ -93,12 +93,15 @@ class OrganizationMemberService:
             organization_id=organization_id,
             role=payload.role,
         )
-        self._record_audit(
+        record_member_audit(
+            self._audit,
             AuditAction.ORGANIZATION_MEMBER_ADDED,
             actor_user_id=actor.id,
             organization_id=organization_id,
             member_id=member.id,
-            metadata={"user_id": str(payload.user_id), "role": payload.role.value},
+            actor_role=resolve_actor_role(actor, organization_id, self._members),
+            target_user_id=payload.user_id,
+            extra_metadata={"role": payload.role.value},
         )
         return OrganizationMemberPublic.model_validate(member)
 
@@ -127,13 +130,15 @@ class OrganizationMemberService:
 
         previous_role = member.role
         member = self._members.update_member_role(member, payload.role)
-        self._record_audit(
+        record_member_audit(
+            self._audit,
             AuditAction.ORGANIZATION_MEMBER_ROLE_UPDATED,
             actor_user_id=actor.id,
             organization_id=organization_id,
             member_id=member.id,
-            metadata={
-                "user_id": str(member.user_id),
+            actor_role=resolve_actor_role(actor, organization_id, self._members),
+            target_user_id=member.user_id,
+            extra_metadata={
                 "previous_role": previous_role.value,
                 "new_role": payload.role.value,
             },
@@ -168,15 +173,24 @@ class OrganizationMemberService:
         ):
             raise LastOwnerProtectedError()
 
+        previous_status = target.status
         member = self._members.update_member_status(target, MemberStatus.LEFT)
-        self._record_audit(
+        record_member_audit(
+            self._audit,
             AuditAction.ORGANIZATION_MEMBER_REMOVED,
             actor_user_id=actor.id,
             organization_id=organization_id,
             member_id=member.id,
-            metadata={
-                "user_id": str(member.user_id),
-                "role": member.role.value,
+            actor_role=resolve_actor_role(
+                actor,
+                organization_id,
+                self._members,
+                access=access,
+            ),
+            target_user_id=member.user_id,
+            extra_metadata={
+                "previous_status": previous_status.value,
+                "new_status": member.status.value,
                 "self_leave": is_self_leave,
             },
         )
@@ -234,25 +248,3 @@ class OrganizationMemberService:
         if isinstance(access, SuperAdminOrgBypass):
             return access.user.global_role == GlobalRole.SUPER_ADMIN
         return actor_member is not None and actor_member.role == OrganizationRole.OWNER
-
-    def _record_audit(
-        self,
-        action: AuditAction,
-        *,
-        actor_user_id: uuid.UUID,
-        organization_id: uuid.UUID,
-        member_id: uuid.UUID,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        if self._audit is None:
-            return
-        self._audit.record(
-            action.value,
-            actor_user_id=actor_user_id,
-            resource_type="organization_member",
-            resource_id=str(member_id),
-            metadata={
-                "organization_id": str(organization_id),
-                **(metadata or {}),
-            },
-        )

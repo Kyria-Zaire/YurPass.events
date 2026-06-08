@@ -9,9 +9,11 @@ from app.modules.audit.repository import AuditRepository
 _FORBIDDEN_METADATA_KEYS = frozenset(
     {
         "password",
+        "password_hash",
         "token",
         "refresh_token",
         "access_token",
+        "jwt",
         "plain_token",
         "otp",
         "code",

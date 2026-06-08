@@ -27,6 +27,7 @@ class AuditAction(StrEnum):
     ORGANIZATION_CREATED = "organization_created"
     ORGANIZATION_UPDATED = "organization_updated"
     ORGANIZATION_ARCHIVED = "organization_archived"
+    ORGANIZATION_SUSPENDED = "organization_suspended"
     ORGANIZATION_MEMBER_ADDED = "organization_member_added"
     ORGANIZATION_MEMBER_ROLE_UPDATED = "organization_member_role_updated"
     ORGANIZATION_MEMBER_REMOVED = "organization_member_removed"

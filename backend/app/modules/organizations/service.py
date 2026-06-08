@@ -1,12 +1,12 @@
 ﻿"""Organizations business logic."""
 
 import uuid
-from typing import Any
 
 from app.modules.audit.constants import AuditAction
 from app.modules.audit.service import AuditService
 from app.modules.auth.constants import GlobalRole
 from app.modules.auth.models import User
+from app.modules.organizations.audit import record_organization_audit, resolve_actor_role
 from app.modules.organizations.constants import OrganizationRole, OrganizationStatus
 from app.modules.organizations.repository import (
     OrganizationMemberRepository,
@@ -55,10 +55,12 @@ class OrganizationService:
             organization_id=organization.id,
             role=OrganizationRole.OWNER,
         )
-        self._record_audit(
+        record_organization_audit(
+            self._audit,
             AuditAction.ORGANIZATION_CREATED,
             actor_user_id=user.id,
             organization_id=organization.id,
+            actor_role=resolve_actor_role(user, organization.id, self._members),
         )
         return OrganizationPublic.model_validate(organization)
 
@@ -94,22 +96,31 @@ class OrganizationService:
             city=data.get("city"),
             country=data.get("country"),
         )
-        self._record_audit(
+        record_organization_audit(
+            self._audit,
             AuditAction.ORGANIZATION_UPDATED,
             actor_user_id=user.id,
             organization_id=organization.id,
-            metadata={"updated_fields": sorted(data.keys())},
+            actor_role=resolve_actor_role(user, organization.id, self._members),
+            extra_metadata={"updated_fields": sorted(data.keys())},
         )
         return OrganizationPublic.model_validate(organization)
 
     def archive(self, organization_id: uuid.UUID, user: User) -> OrganizationPublic:
         """Archive organization logically."""
         organization = self._get_organization_or_404(organization_id)
+        previous_status = organization.status
         organization = self._organizations.archive(organization)
-        self._record_audit(
+        record_organization_audit(
+            self._audit,
             AuditAction.ORGANIZATION_ARCHIVED,
             actor_user_id=user.id,
             organization_id=organization.id,
+            actor_role=resolve_actor_role(user, organization.id, self._members),
+            extra_metadata={
+                "previous_status": previous_status.value,
+                "new_status": organization.status.value,
+            },
         )
         return OrganizationPublic.model_validate(organization)
 
@@ -118,21 +129,3 @@ class OrganizationService:
         if organization is None:
             raise NotFoundError("Organization not found")
         return organization
-
-    def _record_audit(
-        self,
-        action: AuditAction,
-        *,
-        actor_user_id: uuid.UUID,
-        organization_id: uuid.UUID,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        if self._audit is None:
-            return
-        self._audit.record(
-            action.value,
-            actor_user_id=actor_user_id,
-            resource_type="organization",
-            resource_id=str(organization_id),
-            metadata=metadata,
-        )
