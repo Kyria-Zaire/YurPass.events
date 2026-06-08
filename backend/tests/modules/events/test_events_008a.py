@@ -252,7 +252,7 @@ def test_event_public_schema_from_model(db_session) -> None:
     assert public.organization_id == organization.id
 
 
-def test_no_events_endpoints_exposed() -> None:
+def test_events_endpoints_defined_in_008b() -> None:
     from app.main import app
 
     event_paths = [
@@ -260,4 +260,8 @@ def test_no_events_endpoints_exposed() -> None:
         for route in app.routes
         if "/events" in getattr(route, "path", "")
     ]
-    assert event_paths == []
+    assert set(event_paths) == {
+        "/api/organizations/{organization_id}/events",
+        "/api/organizations/{organization_id}/events/{event_id}",
+    }
+    assert len(event_paths) == 5

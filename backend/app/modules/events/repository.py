@@ -68,3 +68,76 @@ class EventRepository:
         self._session.flush()
         self._session.refresh(event)
         return event
+
+    def get_by_id_and_org(
+        self,
+        event_id: uuid.UUID,
+        organization_id: uuid.UUID,
+    ) -> Event | None:
+        """Return an event scoped to an organization."""
+        statement = select(Event).where(
+            Event.id == event_id,
+            Event.organization_id == organization_id,
+        )
+        return self._session.scalar(statement)
+
+    def list_by_organization(self, organization_id: uuid.UUID) -> list[Event]:
+        """List non-archived events for an organization."""
+        statement = (
+            select(Event)
+            .where(
+                Event.organization_id == organization_id,
+                Event.status != EventStatus.ARCHIVED,
+            )
+            .order_by(Event.starts_at)
+        )
+        return list(self._session.scalars(statement))
+
+    def update(
+        self,
+        event: Event,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        event_type: EventType | None = None,
+        visibility: EventVisibility | None = None,
+        starts_at: datetime | None = None,
+        ends_at: datetime | None = None,
+        cover_image_url: str | None = None,
+        venue_name: str | None = None,
+        city: str | None = None,
+        country: str | None = None,
+    ) -> Event:
+        """Apply partial field updates — slug is never modified here."""
+        if name is not None:
+            event.name = name
+        if description is not None:
+            event.description = description
+        if event_type is not None:
+            event.event_type = event_type
+        if visibility is not None:
+            event.visibility = visibility
+        if starts_at is not None:
+            event.starts_at = starts_at
+        if ends_at is not None:
+            event.ends_at = ends_at
+        if cover_image_url is not None:
+            event.cover_image_url = cover_image_url
+        if venue_name is not None:
+            event.venue_name = venue_name
+        if city is not None:
+            event.city = city
+        if country is not None:
+            event.country = country
+        self._session.add(event)
+        self._session.flush()
+        self._session.refresh(event)
+        return event
+
+    def archive(self, event: Event) -> Event:
+        """Archive an event logically."""
+        event.status = EventStatus.ARCHIVED
+        self._session.add(event)
+        self._session.flush()
+        self._session.refresh(event)
+        return event

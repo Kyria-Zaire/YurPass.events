@@ -11,6 +11,7 @@ from app.modules.audit.service import AuditService
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
 from app.modules.auth.repository import AuthRepository
+from app.modules.events.router import router as events_router
 from app.modules.organizations.constants import OrganizationRole
 from app.modules.organizations.member_service import OrganizationMemberService
 from app.modules.organizations.permissions import (
@@ -35,6 +36,11 @@ from app.modules.organizations.schemas import (
 from app.modules.organizations.service import OrganizationService
 
 router = APIRouter()
+router.include_router(
+    events_router,
+    prefix="/{organization_id}/events",
+    tags=["events"],
+)
 
 _read_roles = (
     OrganizationRole.OWNER,
