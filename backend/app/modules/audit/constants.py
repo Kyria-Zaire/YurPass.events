@@ -23,3 +23,4 @@ class AuditAction(StrEnum):
     OTP_SUCCESS = "otp_success"
     GOOGLE_OAUTH_SUCCESS = "google_oauth_success"
     GOOGLE_OAUTH_FAILED = "google_oauth_failed"
+    ORGANIZATION_RBAC_SUPER_ADMIN_BYPASS = "organization_rbac_super_admin_bypass"
