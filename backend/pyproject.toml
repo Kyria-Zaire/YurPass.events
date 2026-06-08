@@ -43,6 +43,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.ruff.lint.per-file-ignores]
 "app/modules/**/router.py" = ["B008"]
 "app/modules/**/dependencies.py" = ["B008"]
+"app/modules/**/permissions.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

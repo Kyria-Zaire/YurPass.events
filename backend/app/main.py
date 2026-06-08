@@ -6,6 +6,9 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.health import build_health_response
 from app.core.logging import setup_logging
+from app.core.rate_limit import RateLimitExceeded
+from app.core.security_headers import SecurityHeadersMiddleware
+from app.modules.admin.router import router as admin_router
 from app.modules.auth.exceptions import (
     AccountInactiveError,
     AuthTokenError,
@@ -17,6 +20,7 @@ from app.modules.auth.exceptions import (
     RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
+from app.shared.exceptions import PermissionDeniedError
 from app.shared.responses import HealthResponse
 
 setup_logging()
@@ -29,7 +33,10 @@ app = FastAPI(
     redoc_url="/redoc" if not settings.is_production else None,
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 
 @app.exception_handler(EmailAlreadyRegisteredError)
@@ -94,6 +101,22 @@ async def oauth_google_error_handler(
     exc: OAuthGoogleError,
 ) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_handler(
+    _request: Request,
+    exc: PermissionDeniedError,
+) -> JSONResponse:
+    return JSONResponse(status_code=403, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(
+    _request: Request,
+    exc: RateLimitExceeded,
+) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

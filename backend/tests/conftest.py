@@ -7,11 +7,19 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.modules.audit.models import AuditLog  # noqa: F401
 from app.modules.auth.models import AuthToken, RefreshToken, User  # noqa: F401
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
+
+
+@pytest.fixture(autouse=True)
+def disable_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Disable rate limiting for most tests."""
+    monkeypatch.setenv("RATE_LIMIT_ENABLED", "false")
+    get_settings.cache_clear()
 
 
 @pytest.fixture

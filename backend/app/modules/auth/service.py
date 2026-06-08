@@ -2,8 +2,11 @@
 
 import secrets
 import uuid
+from typing import Any
 
 from app.core.config import Settings
+from app.modules.audit.constants import AuditAction
+from app.modules.audit.service import AuditService
 from app.modules.auth.auth_token_repository import AuthTokenRepository
 from app.modules.auth.constants import AuthTokenType, UserStatus
 from app.modules.auth.dev_outbox import record_dev_auth_link
@@ -55,12 +58,14 @@ class AuthService:
         auth_token_repository: AuthTokenRepository,
         settings: Settings,
         google_oauth_client: GoogleOAuthClient | None = None,
+        audit_service: AuditService | None = None,
     ) -> None:
         self._repository = repository
         self._refresh_repository = refresh_repository
         self._auth_token_repository = auth_token_repository
         self._settings = settings
         self._google_oauth = google_oauth_client or GoogleOAuthClient(settings)
+        self._audit_service = audit_service
 
     def register(
         self,
@@ -68,6 +73,8 @@ class AuthService:
         email: str,
         password: str,
         full_name: str | None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> RegisterResponse:
         """Register a new user with email and password."""
         normalized_email = normalize_email(email)
@@ -78,6 +85,14 @@ class AuthService:
             email=normalized_email,
             password_hash=hash_password(password),
             full_name=full_name,
+        )
+        self._record_audit(
+            AuditAction.REGISTER_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
         )
         return RegisterResponse(user=UserPublic.model_validate(user))
 
@@ -90,21 +105,77 @@ class AuthService:
         ip_address: str | None = None,
     ) -> tuple[LoginResponse, str]:
         """Authenticate and issue access + refresh session."""
-        user = self._authenticate_credentials(email, password)
+        try:
+            user = self._authenticate_credentials(email, password)
+        except InvalidCredentialsError:
+            self._record_audit(
+                AuditAction.LOGIN_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                metadata={"email": normalize_email(email)},
+            )
+            raise
         user = self._repository.update_last_login(user)
-        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+        response, plain_refresh = self._issue_session(
+            user,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        self._record_audit(
+            AuditAction.LOGIN_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return response, plain_refresh
 
-    def refresh(self, plain_refresh: str | None) -> tuple[RefreshResponse, str]:
+    def refresh(
+        self,
+        plain_refresh: str | None,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[RefreshResponse, str]:
         """Rotate refresh token and issue a new access token."""
         if not plain_refresh:
+            self._record_audit(
+                AuditAction.REFRESH_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
             raise RefreshTokenError()
 
         record = self._refresh_repository.get_valid_by_plain_token(plain_refresh)
         if record is None:
+            stolen = self._refresh_repository.get_by_plain_token_any(plain_refresh)
+            if stolen is not None and stolen.revoked_at is not None:
+                self._refresh_repository.revoke_all_for_session_id(stolen.session_id)
+                self._record_audit(
+                    AuditAction.REFRESH_REUSE_DETECTED,
+                    actor_user_id=stolen.user_id,
+                    resource_type="session",
+                    resource_id=str(stolen.session_id),
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+            self._record_audit(
+                AuditAction.REFRESH_FAILED,
+                actor_user_id=stolen.user_id if stolen else None,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
             raise RefreshTokenError()
 
         user = self._repository.get_by_id(record.user_id)
         if user is None or user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            self._record_audit(
+                AuditAction.REFRESH_FAILED,
+                actor_user_id=record.user_id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
             raise RefreshTokenError()
 
         self._refresh_repository.mark_rotated(record)
@@ -113,11 +184,19 @@ class AuthService:
             user_id=user.id,
             plain_token=new_plain,
             session_id=record.session_id,
-            user_agent=record.user_agent,
-            ip_address=record.ip_address,
+            user_agent=user_agent or record.user_agent,
+            ip_address=ip_address or record.ip_address,
         )
 
         access_token, expires_in = create_access_token(user, self._settings)
+        self._record_audit(
+            AuditAction.REFRESH_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="session",
+            resource_id=str(record.session_id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return (
             RefreshResponse(
                 tokens=TokenResponse(access_token=access_token, expires_in=expires_in),
@@ -125,12 +204,26 @@ class AuthService:
             new_plain,
         )
 
-    def logout(self, plain_refresh: str | None) -> LogoutResponse:
+    def logout(
+        self,
+        plain_refresh: str | None,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> LogoutResponse:
         """Revoke refresh token if present — idempotent."""
+        actor_user_id = None
         if plain_refresh:
             record = self._refresh_repository.get_valid_by_plain_token(plain_refresh)
             if record is not None:
+                actor_user_id = record.user_id
                 self._refresh_repository.revoke(record)
+        self._record_audit(
+            AuditAction.LOGOUT,
+            actor_user_id=actor_user_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return LogoutResponse()
 
     @staticmethod
@@ -138,7 +231,13 @@ class AuthService:
         """Map authenticated user to /me response — no organization data."""
         return MeResponse.model_validate(user)
 
-    def request_email_verification(self, user: User) -> MessageResponse:
+    def request_email_verification(
+        self,
+        user: User,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Issue a one-time email verification token."""
         if user.email_verified_at is not None:
             return MessageResponse(message="verification_email_requested")
@@ -156,9 +255,23 @@ class AuthService:
             plain_token=plain_token,
             path="/api/auth/verify-email",
         )
+        self._record_audit(
+            AuditAction.EMAIL_VERIFICATION_REQUESTED,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return MessageResponse(message="verification_email_requested")
 
-    def verify_email(self, plain_token: str) -> MessageResponse:
+    def verify_email(
+        self,
+        plain_token: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Consume verification token and mark email as verified."""
         record = self._auth_token_repository.get_valid_by_plain_token(
             plain_token,
@@ -177,9 +290,23 @@ class AuthService:
         if user.email_verified_at is None:
             self._repository.mark_email_verified(user)
 
+        self._record_audit(
+            AuditAction.EMAIL_VERIFIED,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return MessageResponse(message="email_verified")
 
-    def request_password_reset(self, email: str) -> MessageResponse:
+    def request_password_reset(
+        self,
+        email: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Issue password reset token — stable response regardless of email existence."""
         normalized_email = normalize_email(email)
         user = self._repository.get_by_email(normalized_email)
@@ -197,9 +324,24 @@ class AuthService:
                 plain_token=plain_token,
                 path="/api/auth/reset-password",
             )
+            self._record_audit(
+                AuditAction.PASSWORD_RESET_REQUESTED,
+                actor_user_id=user.id,
+                resource_type="user",
+                resource_id=str(user.id),
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
         return MessageResponse(message="password_reset_requested")
 
-    def reset_password(self, plain_token: str, new_password: str) -> MessageResponse:
+    def reset_password(
+        self,
+        plain_token: str,
+        new_password: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Consume reset token, update password, revoke active refresh sessions."""
         record = self._auth_token_repository.get_valid_by_plain_token(
             plain_token,
@@ -217,9 +359,23 @@ class AuthService:
 
         self._repository.update_password_hash(user, hash_password(new_password))
         self._refresh_repository.revoke_all_active_for_user(user.id)
+        self._record_audit(
+            AuditAction.PASSWORD_RESET_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
         return MessageResponse(message="password_reset_success")
 
-    def request_magic_link(self, email: str) -> MessageResponse:
+    def request_magic_link(
+        self,
+        email: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Issue magic link token — stable response regardless of email existence."""
         normalized_email = normalize_email(email)
         user = self._repository.get_by_email(normalized_email)
@@ -236,6 +392,14 @@ class AuthService:
                 email=user.email,
                 plain_token=plain_token,
                 path="/api/auth/verify-magic-link",
+            )
+            self._record_audit(
+                AuditAction.MAGIC_LINK_REQUESTED,
+                actor_user_id=user.id,
+                resource_type="user",
+                resource_id=str(user.id),
+                ip_address=ip_address,
+                user_agent=user_agent,
             )
         return MessageResponse(message="magic_link_requested")
 
@@ -265,9 +429,28 @@ class AuthService:
             raise AccountInactiveError(status=user.status.value)
 
         user = self._repository.update_last_login(user)
-        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+        response, plain_refresh = self._issue_session(
+            user,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        self._record_audit(
+            AuditAction.MAGIC_LINK_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return response, plain_refresh
 
-    def request_otp(self, email: str) -> MessageResponse:
+    def request_otp(
+        self,
+        email: str,
+        *,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+    ) -> MessageResponse:
         """Issue OTP login code — stable response regardless of email existence."""
         normalized_email = normalize_email(email)
         user = self._repository.get_by_email(normalized_email)
@@ -284,6 +467,14 @@ class AuthService:
                 email=user.email,
                 plain_token=otp_code,
                 path="/api/auth/verify-otp",
+            )
+            self._record_audit(
+                AuditAction.OTP_REQUESTED,
+                actor_user_id=user.id,
+                resource_type="user",
+                resource_id=str(user.id),
+                ip_address=ip_address,
+                user_agent=user_agent,
             )
         return MessageResponse(message="otp_requested")
 
@@ -313,7 +504,20 @@ class AuthService:
             raise InvalidOtpError()
 
         user = self._repository.update_last_login(user)
-        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+        response, plain_refresh = self._issue_session(
+            user,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        self._record_audit(
+            AuditAction.OTP_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return response, plain_refresh
 
     def start_google_oauth(self) -> tuple[str, str]:
         """Build Google authorization redirect URL and CSRF state."""
@@ -332,16 +536,48 @@ class AuthService:
     ) -> tuple[LoginResponse, str]:
         """Validate OAuth state, authenticate with Google, and issue session."""
         if not state or not cookie_state or not secrets.compare_digest(state, cookie_state):
+            self._record_audit(
+                AuditAction.GOOGLE_OAUTH_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
             raise OAuthStateError()
 
-        google_user = self._google_oauth.authenticate_with_code(code)
-        user = self._resolve_google_user(google_user)
+        try:
+            google_user = self._google_oauth.authenticate_with_code(code)
+            user = self._resolve_google_user(google_user)
+        except OAuthGoogleError:
+            self._record_audit(
+                AuditAction.GOOGLE_OAUTH_FAILED,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+            raise
 
         if user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            self._record_audit(
+                AuditAction.GOOGLE_OAUTH_FAILED,
+                actor_user_id=user.id,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
             raise AccountInactiveError(status=user.status.value)
 
         user = self._repository.update_last_login(user)
-        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+        response, plain_refresh = self._issue_session(
+            user,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        self._record_audit(
+            AuditAction.GOOGLE_OAUTH_SUCCESS,
+            actor_user_id=user.id,
+            resource_type="user",
+            resource_id=str(user.id),
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        return response, plain_refresh
 
     def _resolve_google_user(self, google_user: GoogleUserInfo) -> User:
         """Find, link, or create a user from Google userinfo."""
@@ -412,3 +648,27 @@ class AuthService:
     def to_public(user: User) -> UserPublic:
         """Map a User entity to a public schema."""
         return UserPublic.model_validate(user)
+
+    def _record_audit(
+        self,
+        action: AuditAction,
+        *,
+        actor_user_id: uuid.UUID | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Record audit event when audit service is configured."""
+        if self._audit_service is None:
+            return
+        self._audit_service.record(
+            action.value,
+            actor_user_id=actor_user_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata=metadata,
+        )

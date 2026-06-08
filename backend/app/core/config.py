@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     web_app_url: str = "http://localhost:3000"
     admin_app_url: str = "http://localhost:3001"
 
+    rate_limit_enabled: bool = True
+    turnstile_enabled: bool = False
+    turnstile_secret_key: str = ""
+    turnstile_site_key: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"

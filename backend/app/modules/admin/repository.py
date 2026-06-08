@@ -1,10 +1,12 @@
-﻿"""Admin data access — placeholder for future implementation."""
+﻿"""Admin data access."""
 
-from sqlalchemy.orm import Session
+from app.modules.admin.permissions import PLATFORM_PERMISSIONS
+from app.modules.auth.constants import GlobalRole
 
 
 class AdminRepository:
     """Repository layer for Admin module."""
 
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def get_platform_permissions(self, role: GlobalRole) -> list[str]:
+        """Return platform permissions granted to a global role."""
+        return list(PLATFORM_PERMISSIONS.get(role, []))

@@ -53,6 +53,12 @@ class RefreshTokenRepository:
         )
         return self._session.scalar(statement)
 
+    def get_by_plain_token_any(self, plain_token: str) -> RefreshToken | None:
+        """Return any refresh token matching the plain value regardless of status."""
+        token_hash = hash_refresh_token(plain_token)
+        statement = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        return self._session.scalar(statement)
+
     def mark_rotated(self, record: RefreshToken) -> None:
         """Mark a refresh token as rotated and revoked."""
         now = datetime.now(UTC)
@@ -66,6 +72,21 @@ class RefreshTokenRepository:
         record.revoked_at = datetime.now(UTC)
         self._session.add(record)
         self._session.flush()
+
+    def revoke_all_for_session_id(self, session_id: uuid.UUID) -> int:
+        """Revoke all non-revoked refresh tokens sharing a session_id."""
+        now = datetime.now(UTC)
+        statement = select(RefreshToken).where(
+            RefreshToken.session_id == session_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        records = list(self._session.scalars(statement))
+        for record in records:
+            record.revoked_at = now
+            self._session.add(record)
+        if records:
+            self._session.flush()
+        return len(records)
 
     def revoke_all_active_for_user(self, user_id: uuid.UUID) -> int:
         """Revoke all non-revoked refresh tokens for a user."""

@@ -5,7 +5,10 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.core.rate_limit import check_rate_limit
 from app.db.session import get_db
+from app.modules.audit.repository import AuditRepository
+from app.modules.audit.service import AuditService
 from app.modules.auth.auth_token_repository import AuthTokenRepository
 from app.modules.auth.cookies import (
     clear_oauth_state_cookie,
@@ -49,6 +52,7 @@ def get_auth_service(
         RefreshTokenRepository(db, settings),
         AuthTokenRepository(db),
         settings,
+        audit_service=AuditService(AuditRepository(db)),
     )
 
 
@@ -68,13 +72,18 @@ def _client_ip(request: Request) -> str | None:
 )
 def register(
     payload: RegisterRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> RegisterResponse:
     """Create a new account with email and password."""
+    check_rate_limit(request, limit=10, window_seconds=60, settings=settings)
     return service.register(
         email=str(payload.email),
         password=payload.password,
         full_name=payload.full_name,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
     )
 
 
@@ -87,6 +96,13 @@ def login(
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     """Authenticate with email and password."""
+    check_rate_limit(
+        request,
+        limit=10,
+        window_seconds=60,
+        email=str(payload.email),
+        settings=settings,
+    )
     login_response, plain_refresh = service.login(
         email=str(payload.email),
         password=payload.password,
@@ -105,8 +121,13 @@ def refresh_session(
     settings: Settings = Depends(get_settings),
 ) -> RefreshResponse:
     """Rotate refresh token and issue a new access token."""
+    check_rate_limit(request, limit=30, window_seconds=60, settings=settings)
     plain_refresh = request.cookies.get(settings.refresh_cookie_name)
-    refresh_response, new_plain = service.refresh(plain_refresh)
+    refresh_response, new_plain = service.refresh(
+        plain_refresh,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=_client_ip(request),
+    )
     set_refresh_cookie(response, new_plain, settings)
     return refresh_response
 
@@ -120,7 +141,11 @@ def logout(
 ) -> LogoutResponse:
     """Revoke refresh session and clear cookie."""
     plain_refresh = request.cookies.get(settings.refresh_cookie_name)
-    logout_response = service.logout(plain_refresh)
+    logout_response = service.logout(
+        plain_refresh,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=_client_ip(request),
+    )
     clear_refresh_cookie(response, settings)
     return logout_response
 
@@ -133,47 +158,95 @@ def me(current_user: User = Depends(get_current_user)) -> MeResponse:
 
 @router.post("/request-email-verification", response_model=MessageResponse)
 def request_email_verification(
+    request: Request,
     current_user: User = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Request a one-time email verification token."""
-    return service.request_email_verification(current_user)
+    check_rate_limit(request, limit=5, window_seconds=60, settings=settings)
+    return service.request_email_verification(
+        current_user,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/verify-email", response_model=MessageResponse)
 def verify_email(
     payload: VerifyEmailRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Verify email using a one-time token."""
-    return service.verify_email(payload.token)
+    check_rate_limit(request, limit=10, window_seconds=60, settings=settings)
+    return service.verify_email(
+        payload.token,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/request-password-reset", response_model=MessageResponse)
 def request_password_reset(
     payload: RequestPasswordResetRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Request a password reset — stable response for unknown emails."""
-    return service.request_password_reset(str(payload.email))
+    check_rate_limit(
+        request,
+        limit=5,
+        window_seconds=60,
+        email=str(payload.email),
+        settings=settings,
+    )
+    return service.request_password_reset(
+        str(payload.email),
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(
     payload: ResetPasswordRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Reset password using a one-time token."""
-    return service.reset_password(payload.token, payload.new_password)
+    check_rate_limit(request, limit=10, window_seconds=60, settings=settings)
+    return service.reset_password(
+        payload.token,
+        payload.new_password,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/request-magic-link", response_model=MessageResponse)
 def request_magic_link(
     payload: RequestMagicLinkRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Request a magic link — stable response for unknown emails."""
-    return service.request_magic_link(str(payload.email))
+    check_rate_limit(
+        request,
+        limit=5,
+        window_seconds=60,
+        email=str(payload.email),
+        settings=settings,
+    )
+    return service.request_magic_link(
+        str(payload.email),
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/verify-magic-link", response_model=LoginResponse)
@@ -185,6 +258,7 @@ def verify_magic_link(
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     """Complete passwordless login using a one-time magic link token."""
+    check_rate_limit(request, limit=10, window_seconds=60, settings=settings)
     login_response, plain_refresh = service.verify_magic_link(
         payload.token,
         user_agent=request.headers.get("user-agent"),
@@ -197,10 +271,23 @@ def verify_magic_link(
 @router.post("/request-otp", response_model=MessageResponse)
 def request_otp(
     payload: RequestOtpRequest,
+    request: Request,
     service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
 ) -> MessageResponse:
     """Request an email OTP login code — stable response for unknown emails."""
-    return service.request_otp(str(payload.email))
+    check_rate_limit(
+        request,
+        limit=5,
+        window_seconds=60,
+        email=str(payload.email),
+        settings=settings,
+    )
+    return service.request_otp(
+        str(payload.email),
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @router.post("/verify-otp", response_model=LoginResponse)
@@ -212,6 +299,13 @@ def verify_otp(
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     """Complete passwordless login using an email OTP code."""
+    check_rate_limit(
+        request,
+        limit=10,
+        window_seconds=60,
+        email=str(payload.email),
+        settings=settings,
+    )
     login_response, plain_refresh = service.verify_otp(
         str(payload.email),
         payload.code,
@@ -244,6 +338,7 @@ def google_oauth_callback(
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
     """Complete Google OAuth and issue application session."""
+    check_rate_limit(request, limit=20, window_seconds=60, settings=settings)
     cookie_state = request.cookies.get(settings.oauth_state_cookie_name)
     login_response, plain_refresh = service.complete_google_oauth(
         code=code,
