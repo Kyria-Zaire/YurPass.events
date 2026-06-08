@@ -131,6 +131,10 @@ uv run alembic upgrade head
 | `POST /api/auth/refresh` | Rotation refresh token + nouvel access token |
 | `POST /api/auth/logout` | Révocation refresh + suppression cookie |
 | `GET /api/auth/me` | Profil utilisateur (Bearer token) |
+| `POST /api/auth/request-email-verification` | Demande token vérification email (Bearer) |
+| `POST /api/auth/verify-email` | Valider email via token opaque |
+| `POST /api/auth/request-password-reset` | Demande reset mot de passe |
+| `POST /api/auth/reset-password` | Nouveau mot de passe via token |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \

@@ -53,3 +53,19 @@ class AuthRepository:
         self._session.flush()
         self._session.refresh(user)
         return user
+
+    def mark_email_verified(self, user: User) -> User:
+        """Set email_verified_at timestamp."""
+        user.email_verified_at = datetime.now(UTC)
+        self._session.add(user)
+        self._session.flush()
+        self._session.refresh(user)
+        return user
+
+    def update_password_hash(self, user: User, password_hash: str) -> User:
+        """Replace user password hash."""
+        user.password_hash = password_hash
+        self._session.add(user)
+        self._session.flush()
+        self._session.refresh(user)
+        return user

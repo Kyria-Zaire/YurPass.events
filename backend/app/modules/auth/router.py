@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
+from app.modules.auth.auth_token_repository import AuthTokenRepository
 from app.modules.auth.cookies import clear_refresh_cookie, set_refresh_cookie
 from app.modules.auth.dependencies import get_current_user
 from app.modules.auth.models import User
@@ -15,9 +16,13 @@ from app.modules.auth.schemas import (
     LoginResponse,
     LogoutResponse,
     MeResponse,
+    MessageResponse,
     RefreshResponse,
     RegisterRequest,
     RegisterResponse,
+    RequestPasswordResetRequest,
+    ResetPasswordRequest,
+    VerifyEmailRequest,
 )
 from app.modules.auth.service import AuthService
 
@@ -32,6 +37,7 @@ def get_auth_service(
     return AuthService(
         AuthRepository(db),
         RefreshTokenRepository(db, settings),
+        AuthTokenRepository(db),
         settings,
     )
 
@@ -113,3 +119,39 @@ def logout(
 def me(current_user: User = Depends(get_current_user)) -> MeResponse:
     """Return the authenticated user profile."""
     return AuthService.me(current_user)
+
+
+@router.post("/request-email-verification", response_model=MessageResponse)
+def request_email_verification(
+    current_user: User = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Request a one-time email verification token."""
+    return service.request_email_verification(current_user)
+
+
+@router.post("/verify-email", response_model=MessageResponse)
+def verify_email(
+    payload: VerifyEmailRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Verify email using a one-time token."""
+    return service.verify_email(payload.token)
+
+
+@router.post("/request-password-reset", response_model=MessageResponse)
+def request_password_reset(
+    payload: RequestPasswordResetRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Request a password reset — stable response for unknown emails."""
+    return service.request_password_reset(str(payload.email))
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(
+    payload: ResetPasswordRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Reset password using a one-time token."""
+    return service.reset_password(payload.token, payload.new_password)

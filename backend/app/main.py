@@ -8,6 +8,7 @@ from app.core.health import build_health_response
 from app.core.logging import setup_logging
 from app.modules.auth.exceptions import (
     AccountInactiveError,
+    AuthTokenError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     RefreshTokenError,
@@ -58,6 +59,14 @@ async def refresh_token_error_handler(
     exc: RefreshTokenError,
 ) -> JSONResponse:
     return JSONResponse(status_code=401, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(AuthTokenError)
+async def auth_token_error_handler(
+    _request: Request,
+    exc: AuthTokenError,
+) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

@@ -71,6 +71,31 @@ class LogoutResponse(BaseModel):
     message: str = "logout_success"
 
 
+class VerifyEmailRequest(BaseModel):
+    """Payload to verify email with a one-time token."""
+
+    token: str = Field(min_length=1, max_length=256)
+
+
+class RequestPasswordResetRequest(BaseModel):
+    """Payload to request a password reset email."""
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Payload to reset password with a one-time token."""
+
+    token: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class MessageResponse(BaseModel):
+    """Generic stable auth action response."""
+
+    message: str
+
+
 class MeResponse(BaseModel):
     """Authenticated user profile — no organization data."""
 

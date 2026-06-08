@@ -66,3 +66,18 @@ class RefreshTokenRepository:
         record.revoked_at = datetime.now(UTC)
         self._session.add(record)
         self._session.flush()
+
+    def revoke_all_active_for_user(self, user_id: uuid.UUID) -> int:
+        """Revoke all non-revoked refresh tokens for a user."""
+        now = datetime.now(UTC)
+        statement = select(RefreshToken).where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        records = list(self._session.scalars(statement))
+        for record in records:
+            record.revoked_at = now
+            self._session.add(record)
+        if records:
+            self._session.flush()
+        return len(records)

@@ -21,14 +21,24 @@ class TokenError(Exception):
         super().__init__(message)
 
 
+def generate_opaque_token() -> str:
+    """Generate a cryptographically secure opaque token."""
+    return secrets.token_urlsafe(48)
+
+
 def generate_refresh_token() -> str:
     """Generate a cryptographically secure opaque refresh token."""
-    return secrets.token_urlsafe(48)
+    return generate_opaque_token()
+
+
+def hash_opaque_token(token: str) -> str:
+    """Hash an opaque token for storage and lookup."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def hash_refresh_token(token: str) -> str:
     """Hash a refresh token for storage and lookup."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return hash_opaque_token(token)
 
 
 def create_access_token(user: User, settings: Settings) -> tuple[str, int]:

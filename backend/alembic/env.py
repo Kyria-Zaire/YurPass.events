@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.modules.auth.models import RefreshToken, User  # noqa: F401 — register models
+from app.modules.auth.models import AuthToken, RefreshToken, User  # noqa: F401
 from app.modules.organizations.models import OrganizationMember  # noqa: F401
 
 config = context.config

@@ -3,9 +3,12 @@
 import uuid
 
 from app.core.config import Settings
-from app.modules.auth.constants import UserStatus
+from app.modules.auth.auth_token_repository import AuthTokenRepository
+from app.modules.auth.constants import AuthTokenType, UserStatus
+from app.modules.auth.dev_outbox import record_dev_auth_link
 from app.modules.auth.exceptions import (
     AccountInactiveError,
+    AuthTokenError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
     RefreshTokenError,
@@ -18,12 +21,17 @@ from app.modules.auth.schemas import (
     LoginResponse,
     LogoutResponse,
     MeResponse,
+    MessageResponse,
     RefreshResponse,
     RegisterResponse,
     TokenResponse,
     UserPublic,
 )
-from app.modules.auth.tokens import create_access_token, generate_refresh_token
+from app.modules.auth.tokens import (
+    create_access_token,
+    generate_opaque_token,
+    generate_refresh_token,
+)
 
 
 def normalize_email(email: str) -> str:
@@ -38,10 +46,12 @@ class AuthService:
         self,
         repository: AuthRepository,
         refresh_repository: RefreshTokenRepository,
+        auth_token_repository: AuthTokenRepository,
         settings: Settings,
     ) -> None:
         self._repository = repository
         self._refresh_repository = refresh_repository
+        self._auth_token_repository = auth_token_repository
         self._settings = settings
 
     def register(
@@ -138,6 +148,87 @@ class AuthService:
     def me(user: User) -> MeResponse:
         """Map authenticated user to /me response — no organization data."""
         return MeResponse.model_validate(user)
+
+    def request_email_verification(self, user: User) -> MessageResponse:
+        """Issue a one-time email verification token."""
+        if user.email_verified_at is not None:
+            return MessageResponse(message="verification_email_requested")
+
+        plain_token = generate_opaque_token()
+        self._auth_token_repository.create(
+            user_id=user.id,
+            plain_token=plain_token,
+            token_type=AuthTokenType.EMAIL_VERIFICATION,
+        )
+        record_dev_auth_link(
+            settings=self._settings,
+            kind="email_verification",
+            email=user.email,
+            plain_token=plain_token,
+            path="/api/auth/verify-email",
+        )
+        return MessageResponse(message="verification_email_requested")
+
+    def verify_email(self, plain_token: str) -> MessageResponse:
+        """Consume verification token and mark email as verified."""
+        record = self._auth_token_repository.get_valid_by_plain_token(
+            plain_token,
+            AuthTokenType.EMAIL_VERIFICATION,
+        )
+        if record is None:
+            raise AuthTokenError()
+
+        user = self._repository.get_by_id(record.user_id)
+        if user is None:
+            raise AuthTokenError()
+
+        if not self._auth_token_repository.consume(record):
+            raise AuthTokenError()
+
+        if user.email_verified_at is None:
+            self._repository.mark_email_verified(user)
+
+        return MessageResponse(message="email_verified")
+
+    def request_password_reset(self, email: str) -> MessageResponse:
+        """Issue password reset token — stable response regardless of email existence."""
+        normalized_email = normalize_email(email)
+        user = self._repository.get_by_email(normalized_email)
+        if user is not None:
+            plain_token = generate_opaque_token()
+            self._auth_token_repository.create(
+                user_id=user.id,
+                plain_token=plain_token,
+                token_type=AuthTokenType.PASSWORD_RESET,
+            )
+            record_dev_auth_link(
+                settings=self._settings,
+                kind="password_reset",
+                email=user.email,
+                plain_token=plain_token,
+                path="/api/auth/reset-password",
+            )
+        return MessageResponse(message="password_reset_requested")
+
+    def reset_password(self, plain_token: str, new_password: str) -> MessageResponse:
+        """Consume reset token, update password, revoke active refresh sessions."""
+        record = self._auth_token_repository.get_valid_by_plain_token(
+            plain_token,
+            AuthTokenType.PASSWORD_RESET,
+        )
+        if record is None:
+            raise AuthTokenError()
+
+        user = self._repository.get_by_id(record.user_id)
+        if user is None:
+            raise AuthTokenError()
+
+        if not self._auth_token_repository.consume(record):
+            raise AuthTokenError()
+
+        self._repository.update_password_hash(user, hash_password(new_password))
+        self._refresh_repository.revoke_all_active_for_user(user.id)
+        return MessageResponse(message="password_reset_success")
 
     def _authenticate_credentials(self, email: str, password: str) -> User:
         """Validate email/password and return the user."""

@@ -29,3 +29,10 @@ class RefreshTokenError(YurPassError):
 
     def __init__(self, message: str = "Invalid refresh token") -> None:
         super().__init__(message=message, code="invalid_refresh_token")
+
+
+class AuthTokenError(YurPassError):
+    """One-time auth token is invalid, expired, or already consumed."""
+
+    def __init__(self, message: str = "Invalid or expired token") -> None:
+        super().__init__(message=message, code="invalid_auth_token")

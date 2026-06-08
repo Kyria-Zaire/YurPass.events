@@ -35,14 +35,23 @@ def _make_user(**overrides) -> User:
     return user
 
 
-def _make_service() -> AuthService:
-    return AuthService(MagicMock(), MagicMock(), get_settings())
+def _make_service(
+    repository: MagicMock | None = None,
+    refresh_repository: MagicMock | None = None,
+    auth_token_repository: MagicMock | None = None,
+) -> AuthService:
+    return AuthService(
+        repository or MagicMock(),
+        refresh_repository or MagicMock(),
+        auth_token_repository or MagicMock(),
+        get_settings(),
+    )
 
 
 def test_register_raises_when_email_exists() -> None:
     repository = MagicMock()
     repository.get_by_email.return_value = _make_user()
-    service = AuthService(repository, MagicMock(), get_settings())
+    service = _make_service(repository=repository)
 
     with pytest.raises(EmailAlreadyRegisteredError):
         service.register(
@@ -55,7 +64,7 @@ def test_register_raises_when_email_exists() -> None:
 def test_login_raises_invalid_credentials_when_user_missing() -> None:
     repository = MagicMock()
     repository.get_by_email.return_value = None
-    service = AuthService(repository, MagicMock(), get_settings())
+    service = _make_service(repository=repository)
 
     with pytest.raises(InvalidCredentialsError):
         service.login(email="missing@example.com", password="SecurePass123!")
@@ -64,7 +73,7 @@ def test_login_raises_invalid_credentials_when_user_missing() -> None:
 def test_login_raises_when_account_suspended() -> None:
     repository = MagicMock()
     repository.get_by_email.return_value = _make_user(status=UserStatus.SUSPENDED)
-    service = AuthService(repository, MagicMock(), get_settings())
+    service = _make_service(repository=repository)
 
     with pytest.raises(AccountInactiveError):
         service.login(email="user@example.com", password=_TEST_PASSWORD)

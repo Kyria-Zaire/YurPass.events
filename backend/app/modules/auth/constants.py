@@ -18,3 +18,14 @@ class GlobalRole(StrEnum):
     USER = "user"
     ADMIN = "admin"
     SUPER_ADMIN = "super_admin"
+
+
+class AuthTokenType(StrEnum):
+    """Opaque one-time auth token purposes."""
+
+    EMAIL_VERIFICATION = "email_verification"
+    PASSWORD_RESET = "password_reset"
+
+
+EMAIL_VERIFICATION_EXPIRE_HOURS = 24
+PASSWORD_RESET_EXPIRE_MINUTES = 30
