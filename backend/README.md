@@ -2,7 +2,7 @@
 
 API FastAPI pour YurPass — identité, invitation, billetterie, check-in et accès aux expériences locales.
 
-> **TICKET-003** — Backend Foundation Layer. Aucune logique métier à ce stade.
+> **FEATURE-AUTH-V1** — clôturée (006A → 006G). Sprint 2 : FEATURE-ORGANIZATIONS-V1.
 
 ## Stack
 
@@ -28,10 +28,12 @@ app/
 ├── core/                # Config, logging, constants
 ├── db/                  # SQLAlchemy base, session, health
 ├── shared/              # Exceptions, responses
-└── modules/             # Domaines métier (placeholders)
-    ├── auth/
+└── modules/             # Domaines métier
+    ├── auth/            # ✅ FEATURE-AUTH-V1
+    ├── audit/           # ✅ audit_logs (006G)
+    ├── admin/           # ✅ diagnostic RBAC (006G)
     ├── users/
-    ├── organizations/
+    ├── organizations/   # placeholder Sprint 2
     ├── events/
     ├── invitations/
     ├── tickets/
@@ -59,32 +61,13 @@ router → service → repository → database   ✅
 router → database                          ❌
 ```
 
-## Endpoint actuel
+## Endpoints opérationnels
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/health` | Healthcheck applicatif complet |
-
-Exemple (local sans Postgres/Redis) :
-
-```json
-{
-  "status": "ok",
-  "service": "yurpass-backend",
-  "version": "0.1.0",
-  "environment": "dev",
-  "database": "not_configured",
-  "redis": "not_configured"
-}
-```
-
-Avec Postgres/Redis disponibles : `database` et `redis` passent à `"connected"`.
-
-Aucun secret (URL, credentials) n'est exposé dans la réponse.
+| GET | `/api/health` | Healthcheck applicatif |
 
 L'ancien `/health` est supprimé — utiliser `/api/health` uniquement.
-
-Aucun autre endpoint à ce stade.
 
 ## Développement local
 
@@ -122,25 +105,25 @@ uv run alembic revision --autogenerate -m "description"
 uv run alembic upgrade head
 ```
 
-## Auth (TICKET-006A / 006B)
+## Auth (FEATURE-AUTH-V1 — 006A → 006G)
 
-| Endpoint | Description |
-|----------|-------------|
-| `POST /api/auth/register` | Inscription email/mot de passe (Argon2id) |
-| `POST /api/auth/login` | Connexion — JWT access + cookie refresh HttpOnly |
-| `POST /api/auth/refresh` | Rotation refresh token + nouvel access token |
-| `POST /api/auth/logout` | Révocation refresh + suppression cookie |
-| `GET /api/auth/me` | Profil utilisateur (Bearer token) |
-| `POST /api/auth/request-email-verification` | Demande token vérification email (Bearer) |
-| `POST /api/auth/verify-email` | Valider email via token opaque |
-| `POST /api/auth/request-password-reset` | Demande reset mot de passe |
-| `POST /api/auth/reset-password` | Nouveau mot de passe via token |
-| `POST /api/auth/request-magic-link` | Demande lien magique passwordless |
-| `POST /api/auth/verify-magic-link` | Connexion via token magic link |
-| `POST /api/auth/request-otp` | Demande code OTP email (6 chiffres) |
-| `POST /api/auth/verify-otp` | Connexion via code OTP email |
-| `GET /api/auth/google` | Démarre Google OAuth (redirect + cookie state) |
-| `GET /api/auth/google/callback` | Callback Google OAuth → session JWT |
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `POST /api/auth/register` | Public | Inscription email/mot de passe (Argon2id) |
+| `POST /api/auth/login` | Public | Connexion — JWT access + cookie refresh HttpOnly |
+| `POST /api/auth/refresh` | Cookie refresh | Rotation refresh token + nouvel access token |
+| `POST /api/auth/logout` | Cookie refresh | Révocation refresh + suppression cookie |
+| `GET /api/auth/me` | Bearer JWT | Profil utilisateur (`global_role`, pas d'org) |
+| `POST /api/auth/request-email-verification` | Bearer JWT | Demande token vérification email |
+| `POST /api/auth/verify-email` | Public (token) | Valider email via token opaque |
+| `POST /api/auth/request-password-reset` | Public | Demande reset mot de passe |
+| `POST /api/auth/reset-password` | Public (token) | Nouveau mot de passe via token |
+| `POST /api/auth/request-magic-link` | Public | Demande lien magique passwordless |
+| `POST /api/auth/verify-magic-link` | Public (token) | Connexion via magic link |
+| `POST /api/auth/request-otp` | Public | Demande code OTP email (6 chiffres, 5 min) |
+| `POST /api/auth/verify-otp` | Public | Connexion via code OTP email |
+| `GET /api/auth/google` | Public | Démarre Google OAuth (redirect + cookie state) |
+| `GET /api/auth/google/callback` | Public | Callback Google OAuth → session JWT |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \
@@ -148,14 +131,73 @@ curl -X POST http://localhost:8000/api/auth/register \
   -d '{"email":"user@example.com","password":"SecurePass123!","full_name":"User"}'
 ```
 
-## Modules futurs
+### Sécurité & RBAC (006G)
 
-Les dossiers modules existent en placeholder. L'implémentation métier arrive sprint par sprint :
+Couche transverse livrée avec ADR-003 (ACCEPTED) :
 
-S1 Auth → S2 Organizations → S3 Events → S4 Invitations → S5 Ticketing/Stripe → ...
+| Composant | Détail |
+|-----------|--------|
+| RBAC global | `require_global_roles(GlobalRole)`, `require_super_admin`, `require_active_user` |
+| Audit logs | Table `audit_logs` — actions auth, aucun secret loggé |
+| Rate limiting | Par IP + email sur flux sensibles (désactivable en test) |
+| Security headers | `nosniff`, `DENY`, `no-referrer`, `Permissions-Policy` |
+| Session hardening | Détection refresh reuse → révocation `session_id` |
+| Turnstile | Préparation stub — non actif par défaut |
+
+**Migrations auth head :** `20260608_005` (`audit_logs`)
+
+Tables : `users`, `organization_members` (placeholder), `refresh_tokens`, `auth_tokens`, `audit_logs`.
+
+### Admin — diagnostic RBAC
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /api/admin/rbac/diagnostic` | Bearer JWT + `super_admin` | Rôle global et permissions plateforme |
+
+Réponse exemple :
+
+```json
+{
+  "global_role": "super_admin",
+  "permissions": ["admin.access", "admin.rbac.diagnostic", "admin.users.manage"]
+}
+```
+
+Layering obligatoire : `admin/router.py` → `admin/service.py` → `admin/repository.py`.
+
+```bash
+curl http://localhost:8000/api/admin/rbac/diagnostic \
+  -H "Authorization: Bearer <access_token_super_admin>"
+```
+
+### Variables d'environnement — sécurité
+
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `RATE_LIMIT_ENABLED` | `true` | Active le rate limiting backend (mettre `false` en tests locaux) |
+| `TURNSTILE_ENABLED` | `false` | Active la vérification Cloudflare Turnstile (pré-bêta) |
+| `TURNSTILE_SECRET_KEY` | `""` | Clé secrète Turnstile (requis si `TURNSTILE_ENABLED=true`) |
+| `TURNSTILE_SITE_KEY` | `""` | Clé site Turnstile (frontend futur) |
+| `JWT_SECRET` | `""` | **Obligatoire en production** — secret signature access token |
+
+```bash
+# Tests locaux — désactiver rate limit
+RATE_LIMIT_ENABLED=false uv run pytest
+
+# Dev — Turnstile désactivé (défaut)
+TURNSTILE_ENABLED=false
+```
+
+Emails transactionnels : `dev_outbox` actif si `APP_ENV` ∈ `{dev, local}` (pas de provider SMTP en Auth V1).
+
+## Roadmap modules
+
+S1 Auth ✅ → **S2 Organizations** → S3 Events → S4 Invitations → S5 Ticketing/Stripe → ...
 
 ## Documentation projet
 
 - ADR-001 Monorepo : `../docs/adr/ADR-001-monorepo-modulaire.md`
+- ADR-002 Auth Foundation : `../docs/adr/ADR-002-auth-foundation.md`
+- ADR-003 Security & RBAC : `../docs/adr/ADR-003-security-rbac-foundation.md`
 - Sécurité : `../docs/security/SECURITY_BASELINE.md`
 - Gouvernance IA : `../docs/architecture/AI_WORKFLOW.md`

@@ -1,7 +1,7 @@
 ---
 type: ADR
 version: 1.0
-status: PROPOSED
+status: ACCEPTED
 owner: CTO
 project: YurPass
 date: 2026-06-08
@@ -12,7 +12,7 @@ related_prd: PRD V3.1
 
 ## Statut
 
-Proposé
+Accepté — clôture FEATURE-AUTH-V1 (AUTH-CLOSEOUT-001, juin 2026)
 
 ## Contexte
 
