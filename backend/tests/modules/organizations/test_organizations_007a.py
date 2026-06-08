@@ -6,9 +6,16 @@ import pytest
 from app.modules.auth.constants import UserStatus
 from app.modules.auth.models import User
 from app.modules.auth.password import hash_password
-from app.modules.organizations.constants import OrganizationStatus, OrganizationType
-from app.modules.organizations.models import Organization, OrganizationMember
-from app.modules.organizations.repository import OrganizationRepository
+from app.modules.organizations.constants import (
+    OrganizationRole,
+    OrganizationStatus,
+    OrganizationType,
+)
+from app.modules.organizations.models import Organization
+from app.modules.organizations.repository import (
+    OrganizationMemberRepository,
+    OrganizationRepository,
+)
 from app.modules.organizations.schemas import OrganizationPublic
 from app.modules.organizations.slug import slugify_name
 from sqlalchemy import inspect, text
@@ -52,7 +59,7 @@ def test_organization_model_has_expected_columns() -> None:
     }
 
 
-def test_organization_member_placeholder_unchanged(db_session) -> None:
+def test_organization_member_model_integrated_with_organization(db_session) -> None:
     user = User(
         email=f"member-{uuid4()}@example.com",
         password_hash=hash_password("SecurePass123!"),
@@ -61,16 +68,20 @@ def test_organization_member_placeholder_unchanged(db_session) -> None:
     db_session.add(user)
     db_session.flush()
 
-    member = OrganizationMember(
-        user_id=user.id,
-        organization_id=uuid4(),
-        role="owner",
+    organization = OrganizationRepository(db_session).create(
+        name="Linked Org",
+        slug=f"linked-{uuid4().hex[:8]}",
+        org_type=OrganizationType.NIGHTCLUB,
+        created_by_user_id=user.id,
     )
-    db_session.add(member)
-    db_session.flush()
+    member = OrganizationMemberRepository(db_session).add_member(
+        user_id=user.id,
+        organization_id=organization.id,
+        role=OrganizationRole.OWNER,
+    )
 
     assert member.id is not None
-    assert member.role == "owner"
+    assert member.role == OrganizationRole.OWNER
 
 
 def test_migration_creates_organizations_table(db_engine) -> None:

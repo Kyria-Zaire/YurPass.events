@@ -39,6 +39,7 @@ def db_engine():
             connection.execute(text("SELECT 1"))
     except OperationalError as exc:
         pytest.skip(f"PostgreSQL not available: {exc}")
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield engine
     engine.dispose()

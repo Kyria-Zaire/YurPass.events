@@ -23,3 +23,20 @@ class OrganizationStatus(StrEnum):
     ACTIVE = "active"
     SUSPENDED = "suspended"
     ARCHIVED = "archived"
+
+
+class OrganizationRole(StrEnum):
+    """Organization-scoped role for a member."""
+
+    OWNER = "owner"
+    ADMIN = "admin"
+    STAFF = "staff"
+    VIEWER = "viewer"
+
+
+class MemberStatus(StrEnum):
+    """Lifecycle status for an organization membership."""
+
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    LEFT = "left"
