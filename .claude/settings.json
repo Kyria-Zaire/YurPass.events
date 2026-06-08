@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env.production)",
+      "Read(.env)",
+      "Write(.env.production)",
+      "Write(.env)"
+    ]
+  },
+  "env": {
+    "YURPASS_PROJECT": "yurpass",
+    "YURPASS_DEFAULT_ENV": "local"
+  }
+}

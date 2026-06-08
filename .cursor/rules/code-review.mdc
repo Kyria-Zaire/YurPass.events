@@ -1,0 +1,21 @@
+---
+description: Revue de code tech lead — checklist PR avant merge
+alwaysApply: false
+---
+
+# Code Review — YurPass
+
+## Checklist
+
+- Scope ticket respecté, pas de sur-engineering
+- Tests pour logique nouvelle
+- Lint + typecheck OK
+- Backend : service pas router, permissions, migrations
+- Frontend : packages/ui, types, loading/error states
+- Sécu : auth, RBAC, webhook signature, pas de secrets
+
+## Verdict
+
+**Approve** | **Request Changes** | **Block** (sécu)
+
+Pas de merge sur `main` si CI critique échoue.

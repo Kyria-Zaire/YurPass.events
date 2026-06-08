@@ -1,0 +1,21 @@
+---
+description: shadcn/ui base design system YurPass dans packages/ui
+globs: frontend/**
+alwaysApply: false
+---
+
+# shadcn/ui — YurPass
+
+Base dans `packages/ui`. Apps importent via `@yurpass/ui`, jamais shadcn direct.
+
+## Structure
+
+`components/ui/` (shadcn) + `components/yurpass/` (wrappers EventCard, QRCard...)
+
+## Theming
+
+CSS variables brand dans `globals.css`. Dark mode via next-themes.
+
+## Composants MVP
+
+button, input, card, badge, dialog, table, tabs, toast, form, select, sidebar.

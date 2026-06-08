@@ -1,0 +1,25 @@
+---
+description: Workflow BMAD YurPass — format tickets, sprints, branching
+globs: docs/**
+alwaysApply: false
+---
+
+# Créateur Workflow — YurPass
+
+## PRD → ADR → BMAD
+
+Templates : `docs/templates/PRD-TEMPLATE.mdc` · `ADR-TEMPLATE.mdc` · `BMAD-TEMPLATE.mdc`
+
+Copier BMAD → `docs/sprints/sprint-N/TICKET-XXX.md`
+
+Sections : CONTEXTE · OBJECTIF · INCLUS · EXCLUSIONS · DATA/API/UI IMPACT · SECURITY · TESTS · CRITERIA · OUTPUT · CTO GATE
+
+**DO NOT COMMIT sans validation humaine**
+
+## Sprints
+
+S0 Monorepo → S1 Auth → S2 Orgs → S3 Events → S4 Invitations → S5 Stripe → S6 Wallet → S7 Check-in → S8 Host → S9 Admin → S10 Hardening
+
+## Règles
+
+1 ticket = 1 scope. Branch `feature/sprint-N-ticket-XXX-slug`. Review avant merge.

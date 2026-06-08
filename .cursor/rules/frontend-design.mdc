@@ -1,0 +1,26 @@
+---
+description: Direction visuelle YurPass — processus design, identité, anti-slop
+globs: frontend/**
+alwaysApply: false
+---
+
+# Frontend Design — YurPass
+
+Premium accessible, local et humain. Pas de dark hero cliché ni AI slop.
+
+## Processus
+
+1. Brief inference (`/design-taste-frontend`)
+2. Références (`/image-to-code`)
+3. Tokens dans `packages/config`
+4. shadcn + wrappers YurPass
+5. Motion (`/emil-design-eng`)
+6. Audit (`/impeccable`)
+
+## Typo
+
+Display distinctive + body 16px min. Hiérarchie claire.
+
+## Spacing
+
+Scale 4px. Sections 64-96px desktop.

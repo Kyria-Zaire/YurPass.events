@@ -1,0 +1,89 @@
+---
+type: PRD
+version: 1.0
+status: DRAFT
+owner: CTO
+project: YurPass
+description: Template PRD YurPass — Pourquoi, Qui, Comment, Revenue, Métriques. Copier vers docs/prd/PRD-XXX-slug.md avant toute feature.
+alwaysApply: false
+---
+
+# PRODUCT REQUIREMENTS DOCUMENT — Template YurPass
+
+> PRD = Pourquoi + Qui + Comment + Revenue + Métriques. Pas un cahier des charges.
+> Copier ce template → `docs/prd/PRD-XXX-feature-name.md`
+> Exemples : PRD-001 Auth · PRD-002 Events · PRD-003 Organizations · PRD-004 Invitations · PRD-005 Ticketing · PRD-006 Passport
+
+## 1. META
+
+PRD ID · Feature Name · Owner · Date · Status (DISCOVERY/READY/IN_PROGRESS/DONE/ARCHIVED) · Related ADR · Related BMAD
+
+## 2. EXECUTIVE SUMMARY
+
+5-10 lignes : problème résolu, bénéficiaires, raison d'être.
+
+## 3. BUSINESS CONTEXT
+
+Problem · Impact · Opportunity
+
+## 4. GOALS
+
+Business Goals (3) · User Goals (3)
+
+## 5. NON GOALS
+
+Explicite — pas de chat, pas de notif push MVP, pas de mobile MVP, pas d'IA.
+
+## 6. PERSONAS
+
+2 personas : Name, Role, Goals, Pain Points, Success Criteria
+
+## 7. USER STORIES
+
+Format : As a / I want / So that + Acceptance Criteria
+
+## 8. FUNCTIONAL REQUIREMENTS
+
+FR-001, FR-002, FR-003 — Description + Acceptance Criteria chacun
+
+## 9. NON FUNCTIONAL REQUIREMENTS
+
+Performance · Security · Availability · Accessibility · Scalability · Compliance
+
+## 10. DATA MODEL IMPACT
+
+Entities · Tables · New/Modified · Relationships
+
+## 11. API IMPACT
+
+Endpoints · Methods · Permissions · Payloads (schemas Pydantic)
+
+## 12. UI IMPACT
+
+Screens (web/admin) · Components (packages/ui) · States : Loading/Error/Empty/Success
+
+## 13. SECURITY
+
+Auth · RBAC · Rate limit · Audit · Data protection · Honeypot/Turnstile · Threats
+
+## 14. ANALYTICS
+
+Events · KPIs · Success metrics
+
+## 15. RISKS
+
+Risk · Impact · Mitigation
+
+## 16. ROLLOUT PLAN
+
+Phase 1 · Phase 2 · Phase 3
+
+## 17. ACCEPTANCE CRITERIA
+
+Checklist globale feature
+
+## 18. CTO APPROVAL
+
+Architecture ☐ · Security ☐ · Product ☐ · **Ready For BMAD: YES/NO**
+
+> Aucun BMAD sans Ready For BMAD: YES

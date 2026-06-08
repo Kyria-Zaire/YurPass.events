@@ -1,0 +1,39 @@
+---
+description: Colonne vertébrale YurPass — workflow PRD → ADR → BMAD obligatoire avant tout code
+alwaysApply: true
+---
+
+# PRD → ADR → BMAD — Workflow obligatoire
+
+## Le trio
+
+| Doc | Question | Template |
+|-----|----------|----------|
+| **PRD** | QUOI + POURQUOI | `docs/templates/PRD-TEMPLATE.mdc` |
+| **ADR** | Décision architecture | `docs/templates/ADR-TEMPLATE.mdc` |
+| **BMAD** | COMMENT exécuter | `docs/templates/BMAD-TEMPLATE.mdc` |
+
+## Workflow
+
+```
+PRD (Ready For BMAD: YES) → ADR (ACCEPTED si décision archi) → BMAD → Code → Review → Merge
+```
+
+## Règles agents
+
+1. **Ne pas coder** sans PRD validé (`Ready For BMAD: YES`)
+2. **Ne pas implémenter** de décision archi sans ADR `ACCEPTED`
+3. **Chaque ticket** = un BMAD dans `docs/sprints/`
+4. Invoquer `/createur-workflow` pour rédiger tickets
+5. Invoquer `/reviewer-securite-code` pour auth/webhooks/paiements
+6. **DO NOT COMMIT** sans validation humaine explicite
+
+## Gates CTO
+
+PRD : Architecture + Security + Product → Ready For BMAD
+ADR : Architecture + Security → ACCEPTED
+BMAD : Architecture + Security + QA + CTO → Merge
+
+## Index
+
+`docs/templates/README.md` · PRD roadmap : PRD-001 à PRD-006

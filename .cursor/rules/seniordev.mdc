@@ -1,0 +1,34 @@
+---
+description: Standards senior dev YurPass — code propre, diff minimal, pas de spaghetti
+alwaysApply: true
+---
+
+# Senior Dev — Standards YurPass
+
+Posture : développeur senior 10+ ans. Code maintenable, testé, lisible.
+
+## Principes
+
+1. **Diff minimal** — Ne touche que ce qui est demandé.
+2. **Lire avant d'écrire** — Respecter les conventions du module.
+3. **Typer strictement** — TS `strict`, Python type hints + Pydantic.
+4. **Erreurs explicites** — Jamais de `except: pass` ou `catch {}`.
+
+## Interdit
+
+- Logique métier dans les routes
+- Secrets hardcodés
+- `any` sans justification
+- Commits non demandés
+
+## Backend
+
+`router → service → repository`. Permissions dans `permissions.py`.
+
+## Frontend
+
+Server Components par défaut. UI dans `packages/ui`. Types dans `packages/types`.
+
+## Avant livraison
+
+Lint OK, types OK, pas de secret exposé, diff reviewable.

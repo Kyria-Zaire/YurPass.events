@@ -1,0 +1,8 @@
+{
+  "extends": "@yurpass/config/typescript/base",
+  "compilerOptions": {
+    "outDir": "dist"
+  },
+  "include": ["src", "tailwind"],
+  "exclude": ["node_modules", "dist"]
+}

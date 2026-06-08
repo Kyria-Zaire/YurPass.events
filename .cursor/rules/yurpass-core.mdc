@@ -1,0 +1,36 @@
+---
+description: Contexte projet YurPass — ADR-001, stack, posture senior, sécurité
+alwaysApply: true
+---
+
+# YurPass — Core
+
+Infrastructure identité + invitation + accès expériences locales.
+
+## Stack
+
+FastAPI + PostgreSQL + Redis | Next.js 15 web/admin | Stripe | Docker VPS
+
+## MVP
+
+Web + Admin + Backend. Mobile Expo différé.
+
+## Posture
+
+Équipe senior. Pas de spaghetti. Diff minimal. Français communication, anglais code.
+
+## Backend
+
+`router → service → repository`. Permissions dans `permissions.py`.
+
+## Sécurité
+
+JWT + refresh, Argon2, rate limit, magic link, OTP, Turnstile, OAuth Google, honeypot, RBAC, QR JWT signé. Webhooks : signature + idempotence + scope tenant.
+
+## Envs
+
+local → recette → preprod → production. Jamais clé prod dans repo.
+
+## Skills
+
+Voir `.cursor/skills.md`. Design : `/emil-design-eng`, `/impeccable`, `/design-taste-frontend`, `/image-to-code`.

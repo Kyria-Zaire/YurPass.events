@@ -1,0 +1,23 @@
+---
+description: UX premium YurPass — hiérarchie, états UI, micro-copy, accessibilité
+globs: frontend/**
+alwaysApply: false
+---
+
+# UI/UX Pro Max — YurPass
+
+## Hiérarchie
+
+1 focal par écran. Max 3 niveaux typo. Contraste WCAG AA. Whitespace généreux.
+
+## États obligatoires
+
+default, hover, focus, active, disabled, loading, error, empty.
+
+## Patterns YurPass
+
+EventCard, QRCard, Wallet, Check-in avec feedback immédiat.
+
+## Accessibilité
+
+Focus visible, aria-labels, clavier, `prefers-reduced-motion`.

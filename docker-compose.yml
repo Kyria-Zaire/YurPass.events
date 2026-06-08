@@ -1,0 +1,102 @@
+name: yurpass
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: yurpass-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yurpass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yurpass_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-yurpass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-yurpass} -d ${POSTGRES_DB:-yurpass}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: yurpass-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yurpass-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - infra/env/.env.dev.example
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-yurpass}:${POSTGRES_PASSWORD:-yurpass_dev}@postgres:5432/${POSTGRES_DB:-yurpass}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "uv run python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend-web:
+    build:
+      context: .
+      dockerfile: frontend/apps/web/Dockerfile
+    container_name: yurpass-frontend-web
+    ports:
+      - "3000:3000"
+    environment:
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend-admin:
+    build:
+      context: .
+      dockerfile: frontend/apps/admin/Dockerfile
+    container_name: yurpass-frontend-admin
+    ports:
+      - "3001:3001"
+    environment:
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    name: yurpass_postgres_data

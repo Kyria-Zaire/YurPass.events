@@ -1,0 +1,121 @@
+{
+  "$schema": "yurpass-environments-v1",
+  "description": "Matrice des environnements YurPass — 4 envs, 3+ DB dédiées, isolation stricte",
+  "environments": {
+    "local": {
+      "purpose": "Développement machine développeur",
+      "database": {
+        "host": "localhost",
+        "name": "yurpass_dev",
+        "isolated": true,
+        "seed": "scripts/seed/dev.sql",
+        "refresh_policy": "on_demand"
+      },
+      "stripe": {
+        "mode": "test",
+        "webhook_secret_env": "STRIPE_WEBHOOK_SECRET_TEST",
+        "allowed_test_cards": ["4242424242424242", "4000002500003155"],
+        "zero_euro_payments": true,
+        "3ds_test": true
+      },
+      "auth": {
+        "turnstile": "optional",
+        "oauth_google": "test_client",
+        "rate_limiting": "relaxed"
+      },
+      "secrets_source": ".env.local"
+    },
+    "recette": {
+      "purpose": "QA, démos internes, tests fonctionnels",
+      "database": {
+        "host": "recette-db.internal",
+        "name": "yurpass_recette",
+        "isolated": true,
+        "seed": "scripts/seed/recette.sql",
+        "refresh_policy": "weekly",
+        "data_type": "anonymized_synthetic"
+      },
+      "stripe": {
+        "mode": "test",
+        "webhook_secret_env": "STRIPE_WEBHOOK_SECRET_TEST",
+        "zero_euro_payments": true,
+        "3ds_test": true,
+        "never_use_live_keys": true
+      },
+      "auth": {
+        "turnstile": "required",
+        "oauth_google": "staging_client",
+        "rate_limiting": "production_like"
+      },
+      "secrets_source": ".env.recette"
+    },
+    "preprod": {
+      "purpose": "Validation prod-like avant release",
+      "database": {
+        "host": "preprod-db.internal",
+        "name": "yurpass_preprod",
+        "isolated": true,
+        "refresh_policy": "before_release",
+        "data_type": "truncated_prod_copy",
+        "pii_policy": "anonymized"
+      },
+      "stripe": {
+        "mode": "test",
+        "webhook_secret_env": "STRIPE_WEBHOOK_SECRET_TEST",
+        "never_use_live_keys": true
+      },
+      "auth": {
+        "turnstile": "required",
+        "oauth_google": "preprod_client",
+        "rate_limiting": "production_like"
+      },
+      "secrets_source": ".env.preprod"
+    },
+    "production": {
+      "purpose": "Environnement live clients",
+      "database": {
+        "host": "prod-db.internal",
+        "name": "yurpass_prod",
+        "isolated": true,
+        "backup": {
+          "enabled": true,
+          "frequency": "daily",
+          "retention_days": 30,
+          "includes": ["postgresql", "s3_uploads", "critical_config"],
+          "restore_test_frequency": "monthly"
+        }
+      },
+      "stripe": {
+        "mode": "live",
+        "webhook_secret_env": "STRIPE_WEBHOOK_SECRET_LIVE",
+        "signature_verification": "mandatory",
+        "idempotency": "mandatory"
+      },
+      "auth": {
+        "turnstile": "required",
+        "oauth_google": "production_client",
+        "rate_limiting": "strict",
+        "honeypot": "required",
+        "magic_link_otp": "required"
+      },
+      "secrets_source": "vault_or_host_env",
+      "never_in_repo": true
+    }
+  },
+  "webhook_safety_rules": {
+    "verify_signature": true,
+    "idempotency_key_required": true,
+    "scope_to_tenant": true,
+    "forbidden_actions": [
+      "delete_without_tenant_scope",
+      "bulk_update_without_where",
+      "cross_tenant_data_access",
+      "process_unverified_event"
+    ],
+    "on_violation": "abort_and_alert"
+  },
+  "env_files": {
+    "committed": [".env.example"],
+    "gitignored": [".env.local", ".env.recette", ".env.preprod", ".env.production", ".env"]
+  }
+}

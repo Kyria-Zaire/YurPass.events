@@ -1,0 +1,29 @@
+---
+description: Matrice envs YurPass — local, recette, preprod, production, Stripe test/live
+globs: infra/**,.env*,docker-compose*.yml
+alwaysApply: false
+---
+
+# Environnements YurPass
+
+Config : `.cursor/environnements.json`
+
+## 4 envs isolés
+
+local (dev) → recette (QA) → preprod (validation) → production (live)
+
+## Stripe
+
+Test keys + cartes test + 0€ en local/recette/preprod. Live keys prod uniquement.
+
+## Webhook safety
+
+Signature + idempotence + scope tenant. Hors scope → abandonner le code.
+
+## Secrets
+
+`.env.example` commité. `.env.production` jamais dans repo ni lu par IA.
+
+## Backups prod
+
+PostgreSQL quotidien, rétention 30j, test restore mensuel.

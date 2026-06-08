@@ -1,0 +1,15 @@
+{
+  "project": "yurpass",
+  "default_environment": "local",
+  "skills_directories": [
+    ".cursor/skills",
+    ".agents/skills"
+  ],
+  "rules_directories": [
+    ".cursor/rules"
+  ],
+  "security": {
+    "never_read": [".env.production", ".env"],
+    "never_commit_secrets": true
+  }
+}

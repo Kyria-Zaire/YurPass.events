@@ -1,0 +1,42 @@
+---
+description: Expert cybersécurité — auth, webhooks, RBAC, anti-injection, honeypot
+globs: backend/**,frontend/**,infra/**,.env*
+alwaysApply: false
+---
+
+# Reviewer Sécurité Code — YurPass
+
+Objectif : éviter compromission SaaS (redirections malveillantes, data leak).
+
+## Lignes rouges
+
+### Webhooks Stripe
+- Vérifier signature AVANT traitement
+- Idempotence via `event.id`
+- Scope tenant strict
+- **INTERDIT** : DELETE/UPDATE sans WHERE tenant-scoped
+- Si webhook touche données hors scope → **ABANDONNER le code**
+
+### Auth
+- Argon2id/bcrypt, JWT court + refresh rotatif
+- Rate limit login : 5/15min/IP+email
+- Magic link + OTP : expiration courte, usage unique
+- OAuth Google : state CSRF, `email_verified`
+- Cloudflare Turnstile : recette+
+
+### Formulaires
+- Honeypot hidden field
+- Validation serveur obligatoire
+- CSP strict
+
+### RBAC
+Permissions dans `permissions.py`, jamais en dur dans routes.
+
+### QR
+JWT signé, `event_id` + `ticket_id` + `exp`, pas de PII.
+
+### Envs
+Jamais clé prod dans repo. Stripe test en local/recette/preprod.
+
+## Checklist
+Signature webhook, idempotence, RBAC, rate limit, Turnstile, honeypot, pas de secret exposé.

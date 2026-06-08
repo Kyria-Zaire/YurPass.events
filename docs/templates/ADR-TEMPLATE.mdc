@@ -1,0 +1,59 @@
+---
+type: ADR
+version: 1.0
+status: PROPOSED
+owner: CTO
+project: YurPass
+description: Template ADR YurPass — décisions d'architecture. PRD=Pourquoi, ADR=Décision, BMAD=Exécution. Copier vers docs/adr/ADR-XXX-slug.md
+alwaysApply: false
+---
+
+# ARCHITECTURE DECISION RECORD — Template YurPass
+
+> Copier → `docs/adr/ADR-XXX-titre-decision.md`
+> PRD (Pourquoi) · ADR (Décision) · BMAD (Comment)
+> Évite les débats techniques permanents. ACCEPTED requis avant implémentation.
+
+## 1. META
+
+ADR ID · Title · Status (PROPOSED/ACCEPTED/DEPRECATED/SUPERSEDED) · Date · Deciders · Related PRD · Related BMAD · Supersedes/Superseded by
+
+## 2. CONTEXT
+
+Problème technique · Contraintes · Forces en jeu · État actuel
+
+## 3. DECISION
+
+Décision claire et affirmative.
+
+## 4. RATIONALE
+
+Pourquoi cette option · Alignement ADR-001 monorepo
+
+## 5. ALTERNATIVES CONSIDERED
+
+Alternative A/B : Description · Pros · Cons · Rejetée parce que
+
+## 6. CONSEQUENCES
+
+Positive · Negative (trade-offs) · Risks (Impact/Mitigation)
+
+## 7. IMPLEMENTATION IMPACT
+
+Backend · Frontend · Database · Infra · Security · Dependencies
+
+## 8. COMPLIANCE
+
+ADR-001 Monorepo ☐ · Security baseline ☐ · NFR PRD ☐
+
+## 9. VALIDATION
+
+Métriques · Critères révision · Plan rollback
+
+## 10. REFERENCES
+
+PRD · Docs externes · Discussions
+
+## 11. CTO APPROVAL
+
+Architecture ☐ · Security ☐ · **Status → ACCEPTED: YES/NO**

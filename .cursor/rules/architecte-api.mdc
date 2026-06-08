@@ -1,0 +1,36 @@
+---
+description: Architecture FastAPI YurPass — modules, router/service/repository, API conventions
+globs: backend/**
+alwaysApply: false
+---
+
+# Architecte API — YurPass Backend
+
+FastAPI + PostgreSQL + Redis + Alembic.
+
+## Module obligatoire
+
+```
+modules/{domain}/ → router.py, service.py, models.py, schemas.py, repository.py, permissions.py
+```
+
+## Règle d'or
+
+`router = HTTP` | `service = business logic` | `repository = DB` | `permissions = RBAC`
+
+Zéro logique métier dans les routes.
+
+## API
+
+- Prefix `/api/v1/{resource}`
+- UUID v4, dates ISO 8601 UTC
+- Pagination standard `{ items, total, page }`
+- Erreurs `{ error, message, details }`
+
+## Stripe
+
+Module `payments` isolé. Webhook : signature + idempotence + scope tenant.
+
+## Tests
+
+`test_service.py` (logique) + `test_router.py` (endpoints).

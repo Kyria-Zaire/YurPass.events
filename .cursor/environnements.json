@@ -1,0 +1,40 @@
+{
+  "$schema": "yurpass-environments-v1",
+  "description": "Matrice des environnements YurPass — voir aussi .claude/environnements.json",
+  "environments": {
+    "local": {
+      "purpose": "Développement machine développeur",
+      "database": { "name": "yurpass_dev", "isolated": true, "refresh_policy": "on_demand" },
+      "stripe": { "mode": "test", "zero_euro_payments": true, "3ds_test": true },
+      "secrets_source": ".env.local"
+    },
+    "recette": {
+      "purpose": "QA et démos",
+      "database": { "name": "yurpass_recette", "isolated": true, "refresh_policy": "weekly" },
+      "stripe": { "mode": "test", "zero_euro_payments": true, "never_use_live_keys": true },
+      "secrets_source": ".env.recette"
+    },
+    "preprod": {
+      "purpose": "Validation prod-like",
+      "database": { "name": "yurpass_preprod", "isolated": true, "data_type": "truncated_prod_copy" },
+      "stripe": { "mode": "test", "never_use_live_keys": true },
+      "secrets_source": ".env.preprod"
+    },
+    "production": {
+      "purpose": "Live",
+      "database": {
+        "name": "yurpass_prod",
+        "backup": { "enabled": true, "frequency": "daily", "retention_days": 30 }
+      },
+      "stripe": { "mode": "live", "signature_verification": "mandatory" },
+      "secrets_source": "vault_or_host_env",
+      "never_in_repo": true
+    }
+  },
+  "webhook_safety_rules": {
+    "verify_signature": true,
+    "idempotency_key_required": true,
+    "scope_to_tenant": true,
+    "on_violation": "abort_and_alert"
+  }
+}

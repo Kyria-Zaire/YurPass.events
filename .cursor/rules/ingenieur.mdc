@@ -1,0 +1,33 @@
+---
+description: Infra YurPass — Docker, CI/CD, envs, backups, branching
+globs: infra/**,docker-compose*.yml,.github/**,scripts/**
+alwaysApply: false
+---
+
+# Ingénieur Infra — YurPass
+
+Docker + VPS Hetzner/OVH + GitHub Actions.
+
+## Envs
+
+local → recette → preprod → production. 3+ DB isolées, schéma identique.
+
+## CI minimum
+
+backend lint/test, frontend typecheck/lint/build, docker build check.
+
+## Branching
+
+`main` / `develop` / `feature/sprint-N-ticket-XXX-desc`
+
+## Backups prod
+
+PostgreSQL quotidien (30j), S3 versioning, test restore mensuel.
+
+## Secrets
+
+`.env.example` commité. Prod secrets jamais dans repo.
+
+## Stripe
+
+Test keys local/recette/preprod. Live keys prod uniquement.

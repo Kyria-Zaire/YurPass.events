@@ -1,0 +1,90 @@
+---
+type: BMAD
+version: 1.0
+owner: CTO
+project: YurPass
+description: Template BMAD YurPass — exécution technique. PRD dit QUOI/POURQUOI, BMAD dit COMMENT. Pilote Cursor et Claude Code.
+alwaysApply: false
+---
+
+# BUILD MODE ARCHITECTURE DEVELOPMENT — Template YurPass
+
+> Copier → `docs/sprints/sprint-N/TICKET-XXX-slug.md`
+> PRD (QUOI/POURQUOI) → ADR (décision) → BMAD (COMMENT) → Code → Review → Merge
+
+## Philosophy
+
+No code without : PRD (Ready YES) · Scope · Acceptance Criteria · Security Review
+
+## WORKFLOW
+
+PRD → ADR → BMAD → Implementation → Review → Validation → Merge
+
+## TICKET HEADER
+
+```
+[BMAD] Phase: Sprint N
+[FEATURE]: ...
+[TICKET]: TICKET-XXX
+[ROLE]: seniordev | architecte-api | constructeur-ui | ingenieur | reviewer-securite-code
+```
+
+## CONTEXTE
+
+Business · Architecture actuelle · Dependencies · Constraints · PRD-XXX · ADR-XXX
+
+## OBJECTIF
+
+Résultat attendu.
+
+## IMPORTANT
+
+Rules seniordev · ADR-001 monorepo · router→service→repository · contraintes archi/sécu/perf
+
+## INCLUS
+
+1. 2. 3. 4.
+
+## EXCLUSIONS STRICTES
+
+1. 2. 3. 4.
+
+## DATA IMPACT
+
+Tables · Migrations Alembic · Entities · Relationships
+
+## API IMPACT
+
+Endpoints · Methods · Permissions · Schemas
+
+## UI IMPACT
+
+Pages · Components (packages/ui) · States Loading/Error/Empty/Success
+
+## SECURITY NOTES
+
+RBAC · Validation · Rate limit · Audit · Webhook protection · Threats
+
+## TESTS REQUIRED
+
+Unit · Integration · E2E · Manual
+
+## ACCEPTANCE CRITERIA
+
+4 critères mesurables minimum
+
+## OUTPUT ATTENDU
+
+Files created/modified · Commands · Validation proof (pytest, lint, typecheck)
+
+## REVIEW CHECKLIST
+
+Architecture · Security · Code Quality · Performance · Accessibility · Maintainability
+
+## COMMIT RULE
+
+**DO NOT COMMIT WITHOUT EXPLICIT HUMAN VALIDATION**
+
+## CTO GATE
+
+Architecture ☐ · Security ☐ · QA ☐ · CTO ☐ — Required: YES

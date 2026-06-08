@@ -1,0 +1,23 @@
+---
+description: Motion et polish UI — transitions, feedback, prefers-reduced-motion
+globs: frontend/**
+alwaysApply: false
+---
+
+# Make Interfaces Feel Better — YurPass
+
+Motion avec but. 150-300ms UI. Easing naturel. Stagger subtil sur listes.
+
+## Patterns
+
+Button press scale 0.98. Modal fade+scale. Toast slide-in. EventCard hover lift.
+
+## Reduced motion
+
+`prefers-reduced-motion: reduce` → désactiver animations.
+
+## Libs
+
+CSS transitions par défaut. Framer Motion si layout complexe.
+
+Complète `/emil-design-eng`.

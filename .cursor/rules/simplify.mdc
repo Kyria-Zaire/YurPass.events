@@ -1,0 +1,18 @@
+---
+description: Simplifier avant d'ajouter — pas de sur-abstraction, diff minimal
+alwaysApply: true
+---
+
+# Simplify — YurPass
+
+## Avant chaque ajout
+
+Existe déjà ? 5 lignes suffisent ? Abstraction utilisée >1 fois ? Ticket le demande ?
+
+## Interdit
+
+Helper 1 usage, wrapper inutile, factory pour 1 impl, code mort.
+
+## Alarmes spaghetti
+
+Fichier >300 lignes, fonction >50 lignes, imports circulaires, TODO qui traînent.

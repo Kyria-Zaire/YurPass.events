@@ -1,0 +1,33 @@
+---
+description: Frontend YurPass — Next.js 15, shadcn, design system packages/ui
+globs: frontend/**
+alwaysApply: false
+---
+
+# Constructeur UI — YurPass Frontend
+
+Next.js 15 + TypeScript + Tailwind + shadcn/ui.
+
+## Structure
+
+`apps/web` (public) | `apps/admin` (cockpit) | `packages/ui` (design system)
+
+## Règles
+
+- Composants réutilisables dans `packages/ui/`
+- Server Components par défaut
+- `"use client"` seulement si interactif
+- Types depuis `packages/types`
+- Accessibilité WCAG AA
+
+## Design system
+
+Button, Input, Card, Badge, Modal, Table, Sidebar, Navbar, QRCard, EventCard
+
+## Skills UI
+
+`/design-taste-frontend` → `/image-to-code` → `/constructeur-ui` → `/emil-design-eng` → `/impeccable`
+
+## Interdit
+
+Cards imbriquées, hero cliché, duplication composants, `any` dans props.

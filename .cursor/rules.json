@@ -1,0 +1,205 @@
+{
+  "$schema": "yurpass-cursor-rules-v1",
+  "version": "1.0.0",
+  "project": "yurpass",
+  "ticket": "TICKET-002",
+  "description": "Manifeste de gouvernance IA Cursor — index des rules, gates et lignes rouges",
+
+  "governance": {
+    "no_code_without_prd": true,
+    "prd_gate": "Ready For BMAD: YES",
+    "no_arch_without_adr": true,
+    "adr_gate": "ACCEPTED",
+    "no_feature_beyond_ticket": true,
+    "no_unrelated_file_modifications": true,
+    "no_commit_without_human_validation": true,
+    "no_secrets_in_repo": true,
+    "no_delete_without_explicit_request": true,
+    "no_dependencies_without_ticket": true
+  },
+
+  "documentation": {
+    "prd_template": "docs/templates/PRD-TEMPLATE.mdc",
+    "adr_template": "docs/templates/ADR-TEMPLATE.mdc",
+    "bmad_template": "docs/templates/BMAD-TEMPLATE.mdc",
+    "security_baseline": "docs/security/SECURITY_BASELINE.md",
+    "ai_workflow": "docs/architecture/AI_WORKFLOW.md",
+    "environments": "docs/architecture/ENVIRONMENTS.md",
+    "workflow_index": "docs/templates/README.md"
+  },
+
+  "entry_points": {
+    "cursor": ".cursor/Cursor.md",
+    "agents": "AGENTS.md",
+    "claude": "CLAUDE.md",
+    "claude_governance": ".claude/Claude.md",
+    "skills_index": ".cursor/skills.md"
+  },
+
+  "skills_directories": [
+    ".cursor/skills",
+    ".agents/skills"
+  ],
+
+  "rules_directories": [
+    ".cursor/rules"
+  ],
+
+  "security": {
+    "never_read": [".env.production", ".env"],
+    "never_commit": [".env", ".env.local", ".env.recette", ".env.preprod", ".env.production"],
+    "stripe_live_keys_only_in": "production",
+    "webhook_rules": {
+      "verify_signature": true,
+      "idempotency_required": true,
+      "tenant_scope_required": true,
+      "on_violation": "abort_and_alert"
+    }
+  },
+
+  "environments": {
+    "config_files": [".cursor/environnements.json", ".claude/environnements.json"],
+    "matrix": ["local", "recette", "preprod", "production"],
+    "isolated_databases": true
+  },
+
+  "rules": [
+    {
+      "id": "yurpass-core",
+      "file": "rules/yurpass-core.mdc",
+      "alwaysApply": true,
+      "category": "core",
+      "description": "Contexte projet, stack, posture senior"
+    },
+    {
+      "id": "prd-adr-bmad",
+      "file": "rules/prd-adr-bmad.mdc",
+      "alwaysApply": true,
+      "category": "workflow",
+      "description": "Workflow PRD → ADR → BMAD obligatoire"
+    },
+    {
+      "id": "seniordev",
+      "file": "rules/seniordev.mdc",
+      "alwaysApply": true,
+      "category": "development",
+      "description": "Posture senior dev, diff minimal, scope control"
+    },
+    {
+      "id": "simplify",
+      "file": "rules/simplify.mdc",
+      "alwaysApply": true,
+      "category": "development",
+      "description": "Anti sur-ingénierie"
+    },
+    {
+      "id": "improve-codebase-architecture",
+      "file": "rules/improve-codebase-architecture.mdc",
+      "alwaysApply": true,
+      "category": "architecture",
+      "description": "Monorepo, découplage, dépendances"
+    },
+    {
+      "id": "architecte-api",
+      "file": "rules/architecte-api.mdc",
+      "alwaysApply": false,
+      "globs": ["backend/**"],
+      "category": "backend",
+      "description": "FastAPI modules, router/service/repository"
+    },
+    {
+      "id": "constructeur-ui",
+      "file": "rules/constructeur-ui.mdc",
+      "alwaysApply": false,
+      "globs": ["frontend/**"],
+      "category": "frontend",
+      "description": "Next.js, shadcn, packages/ui"
+    },
+    {
+      "id": "ui-ux-pro-max",
+      "file": "rules/ui-ux-pro-max.mdc",
+      "alwaysApply": false,
+      "globs": ["frontend/**"],
+      "category": "frontend",
+      "description": "UX premium, états UI, accessibilité"
+    },
+    {
+      "id": "frontend-design",
+      "file": "rules/frontend-design.mdc",
+      "alwaysApply": false,
+      "globs": ["frontend/**"],
+      "category": "frontend",
+      "description": "Direction visuelle, anti-slop"
+    },
+    {
+      "id": "shadcn",
+      "file": "rules/shadcn.mdc",
+      "alwaysApply": false,
+      "globs": ["frontend/**"],
+      "category": "frontend",
+      "description": "Design system shadcn dans packages/ui"
+    },
+    {
+      "id": "make-interfaces-feel-better",
+      "file": "rules/make-interfaces-feel-better.mdc",
+      "alwaysApply": false,
+      "globs": ["frontend/**"],
+      "category": "frontend",
+      "description": "Motion, polish, reduced-motion"
+    },
+    {
+      "id": "reviewer-securite-code",
+      "file": "rules/reviewer-securite-code.mdc",
+      "alwaysApply": false,
+      "globs": ["backend/**", "frontend/**", "infra/**", ".env*"],
+      "category": "security",
+      "description": "Auth, RBAC, webhooks, honeypot, Turnstile"
+    },
+    {
+      "id": "code-review",
+      "file": "rules/code-review.mdc",
+      "alwaysApply": false,
+      "category": "review",
+      "description": "Revue PR, verdict avant merge"
+    },
+    {
+      "id": "ingenieur",
+      "file": "rules/ingenieur.mdc",
+      "alwaysApply": false,
+      "globs": ["infra/**", "docker-compose*.yml", ".github/**", "scripts/**"],
+      "category": "infra",
+      "description": "Docker, CI, envs, backups"
+    },
+    {
+      "id": "environnements",
+      "file": "rules/environnements.mdc",
+      "alwaysApply": false,
+      "globs": ["infra/**", ".env*", "docker-compose*.yml"],
+      "category": "infra",
+      "description": "Matrice envs, DB isolées, Stripe test/live"
+    },
+    {
+      "id": "createur-workflow",
+      "file": "rules/createur-workflow.mdc",
+      "alwaysApply": false,
+      "globs": ["docs/**"],
+      "category": "workflow",
+      "description": "Tickets BMAD, sprints, gates CTO"
+    }
+  ],
+
+  "skills": [
+    { "id": "seniordev", "path": "skills/seniordev/SKILL.md", "role": "development" },
+    { "id": "architecte-api", "path": "skills/architecte-api/SKILL.md", "role": "backend" },
+    { "id": "constructeur-ui", "path": "skills/constructeur-ui/SKILL.md", "role": "frontend" },
+    { "id": "code-review", "path": "skills/code-review/SKILL.md", "role": "review", "manual_only": true },
+    { "id": "reviewer-securite-code", "path": "skills/reviewer-securite-code/SKILL.md", "role": "security", "manual_only": true },
+    { "id": "ingenieur", "path": "skills/ingenieur/SKILL.md", "role": "infra" },
+    { "id": "createur-workflow", "path": "skills/createur-workflow/SKILL.md", "role": "workflow", "manual_only": true }
+  ],
+
+  "external_skills": {
+    "directory": ".agents/skills",
+    "design": ["emil-design-eng", "impeccable", "design-taste-frontend", "image-to-code"]
+  }
+}

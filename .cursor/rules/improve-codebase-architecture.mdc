@@ -1,0 +1,26 @@
+---
+description: Architecture monorepo YurPass — découplage, modules, dépendances
+alwaysApply: true
+---
+
+# Improve Codebase Architecture — YurPass
+
+## Principes
+
+Apps → packages (jamais l'inverse). API REST entre stacks. 1 module = 1 domaine.
+
+## Dépendances
+
+`apps/*` → `packages/*`. `backend/modules/X` → `backend/shared`. Pas d'import cross-app.
+
+## Anti-patterns
+
+Logique métier dans UI, types dupliqués sans doc, god module, couplage direct inter-modules.
+
+## Évolution
+
+Nouveau domaine = nouveau module. Breaking API = `/api/v2/`. Refactor = ADR + scope minimal.
+
+## Santé
+
+Pas de dépendance circulaire, endpoints testés, pas de code mort.
