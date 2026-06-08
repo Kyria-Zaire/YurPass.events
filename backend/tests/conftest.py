@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.main import app
 from app.modules.audit.models import AuditLog  # noqa: F401
 from app.modules.auth.models import AuthToken, RefreshToken, User  # noqa: F401
+from app.modules.events.models import Event  # noqa: F401
 from app.modules.organizations.models import Organization, OrganizationMember  # noqa: F401
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
