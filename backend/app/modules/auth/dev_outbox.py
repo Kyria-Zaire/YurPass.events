@@ -25,7 +25,7 @@ class DevOutboxEntry:
 
 
 def _is_dev_enabled(settings: Settings) -> bool:
-    return settings.app_env == "dev"
+    return settings.app_env in {"dev", "local"}
 
 
 def record_dev_auth_link(

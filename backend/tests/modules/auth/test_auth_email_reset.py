@@ -88,6 +88,7 @@ def test_verify_email_success_sets_email_verified_at(auth_client, db_session) ->
 
     db_session.refresh(user)
     assert user.email_verified_at is not None
+    assert user.status == UserStatus.ACTIVE
 
 
 def test_verify_email_invalid_returns_400(auth_client) -> None:
@@ -253,7 +254,7 @@ def test_no_plain_token_stored_in_database(auth_client, db_session) -> None:
         assert len(row.token_hash) == 64
 
 
-def test_dev_outbox_active_only_in_dev() -> None:
+def test_dev_outbox_active_only_in_dev_and_local() -> None:
     production_settings = Settings(app_env="production", jwt_secret="test-secret")
     record_dev_auth_link(
         settings=production_settings,
@@ -264,6 +265,17 @@ def test_dev_outbox_active_only_in_dev() -> None:
     )
     assert get_dev_outbox() == []
 
+    local_settings = Settings(app_env="local", jwt_secret="test-secret")
+    record_dev_auth_link(
+        settings=local_settings,
+        kind="password_reset",
+        email="user@example.com",
+        plain_token="local-token",
+        path="/api/auth/reset-password",
+    )
+    assert len(get_dev_outbox()) == 1
+
+    clear_dev_outbox()
     dev_settings = get_settings()
     record_dev_auth_link(
         settings=dev_settings,

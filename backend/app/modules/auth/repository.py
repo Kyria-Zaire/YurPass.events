@@ -55,8 +55,10 @@ class AuthRepository:
         return user
 
     def mark_email_verified(self, user: User) -> User:
-        """Set email_verified_at timestamp."""
+        """Set email_verified_at and activate account when pending verification."""
         user.email_verified_at = datetime.now(UTC)
+        if user.status == UserStatus.PENDING_VERIFICATION:
+            user.status = UserStatus.ACTIVE
         self._session.add(user)
         self._session.flush()
         self._session.refresh(user)
