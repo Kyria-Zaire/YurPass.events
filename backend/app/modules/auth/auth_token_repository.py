@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.constants import (
     EMAIL_VERIFICATION_EXPIRE_HOURS,
+    MAGIC_LINK_EXPIRE_MINUTES,
     PASSWORD_RESET_EXPIRE_MINUTES,
     AuthTokenType,
 )
@@ -31,6 +32,8 @@ class AuthTokenRepository:
         """Persist a new hashed one-time auth token."""
         if token_type == AuthTokenType.EMAIL_VERIFICATION:
             expires_at = datetime.now(UTC) + timedelta(hours=EMAIL_VERIFICATION_EXPIRE_HOURS)
+        elif token_type == AuthTokenType.MAGIC_LINK:
+            expires_at = datetime.now(UTC) + timedelta(minutes=MAGIC_LINK_EXPIRE_MINUTES)
         else:
             expires_at = datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 

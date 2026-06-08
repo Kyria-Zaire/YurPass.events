@@ -77,6 +77,18 @@ class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=1, max_length=256)
 
 
+class VerifyMagicLinkRequest(BaseModel):
+    """Payload to complete magic link login with a one-time token."""
+
+    token: str = Field(min_length=1, max_length=256)
+
+
+class RequestMagicLinkRequest(BaseModel):
+    """Payload to request a magic link login email."""
+
+    email: EmailStr
+
+
 class RequestPasswordResetRequest(BaseModel):
     """Payload to request a password reset email."""
 

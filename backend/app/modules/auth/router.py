@@ -20,9 +20,11 @@ from app.modules.auth.schemas import (
     RefreshResponse,
     RegisterRequest,
     RegisterResponse,
+    RequestMagicLinkRequest,
     RequestPasswordResetRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
+    VerifyMagicLinkRequest,
 )
 from app.modules.auth.service import AuthService
 
@@ -155,3 +157,30 @@ def reset_password(
 ) -> MessageResponse:
     """Reset password using a one-time token."""
     return service.reset_password(payload.token, payload.new_password)
+
+
+@router.post("/request-magic-link", response_model=MessageResponse)
+def request_magic_link(
+    payload: RequestMagicLinkRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Request a magic link — stable response for unknown emails."""
+    return service.request_magic_link(str(payload.email))
+
+
+@router.post("/verify-magic-link", response_model=LoginResponse)
+def verify_magic_link(
+    payload: VerifyMagicLinkRequest,
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> LoginResponse:
+    """Complete passwordless login using a one-time magic link token."""
+    login_response, plain_refresh = service.verify_magic_link(
+        payload.token,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=_client_ip(request),
+    )
+    set_refresh_cookie(response, plain_refresh, settings)
+    return login_response

@@ -135,6 +135,8 @@ uv run alembic upgrade head
 | `POST /api/auth/verify-email` | Valider email via token opaque |
 | `POST /api/auth/request-password-reset` | Demande reset mot de passe |
 | `POST /api/auth/reset-password` | Nouveau mot de passe via token |
+| `POST /api/auth/request-magic-link` | Demande lien magique passwordless |
+| `POST /api/auth/verify-magic-link` | Connexion via token magic link |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \

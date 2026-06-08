@@ -84,26 +84,7 @@ class AuthService:
         """Authenticate and issue access + refresh session."""
         user = self._authenticate_credentials(email, password)
         user = self._repository.update_last_login(user)
-
-        access_token, expires_in = create_access_token(user, self._settings)
-        plain_refresh = generate_refresh_token()
-        session_id = uuid.uuid4()
-        self._refresh_repository.create(
-            user_id=user.id,
-            plain_token=plain_refresh,
-            session_id=session_id,
-            user_agent=user_agent,
-            ip_address=ip_address,
-        )
-
-        response = LoginResponse(
-            user=UserPublic.model_validate(user),
-            tokens=TokenResponse(
-                access_token=access_token,
-                expires_in=expires_in,
-            ),
-        )
-        return response, plain_refresh
+        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
 
     def refresh(self, plain_refresh: str | None) -> tuple[RefreshResponse, str]:
         """Rotate refresh token and issue a new access token."""
@@ -229,6 +210,81 @@ class AuthService:
         self._repository.update_password_hash(user, hash_password(new_password))
         self._refresh_repository.revoke_all_active_for_user(user.id)
         return MessageResponse(message="password_reset_success")
+
+    def request_magic_link(self, email: str) -> MessageResponse:
+        """Issue magic link token — stable response regardless of email existence."""
+        normalized_email = normalize_email(email)
+        user = self._repository.get_by_email(normalized_email)
+        if user is not None and user.status not in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            plain_token = generate_opaque_token()
+            self._auth_token_repository.create(
+                user_id=user.id,
+                plain_token=plain_token,
+                token_type=AuthTokenType.MAGIC_LINK,
+            )
+            record_dev_auth_link(
+                settings=self._settings,
+                kind="magic_link",
+                email=user.email,
+                plain_token=plain_token,
+                path="/api/auth/verify-magic-link",
+            )
+        return MessageResponse(message="magic_link_requested")
+
+    def verify_magic_link(
+        self,
+        plain_token: str,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[LoginResponse, str]:
+        """Consume magic link token and issue a full login session."""
+        record = self._auth_token_repository.get_valid_by_plain_token(
+            plain_token,
+            AuthTokenType.MAGIC_LINK,
+        )
+        if record is None:
+            raise AuthTokenError()
+
+        user = self._repository.get_by_id(record.user_id)
+        if user is None:
+            raise AuthTokenError()
+
+        if not self._auth_token_repository.consume(record):
+            raise AuthTokenError()
+
+        if user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            raise AccountInactiveError(status=user.status.value)
+
+        user = self._repository.update_last_login(user)
+        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+
+    def _issue_session(
+        self,
+        user: User,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[LoginResponse, str]:
+        """Create JWT access token and hashed refresh session."""
+        access_token, expires_in = create_access_token(user, self._settings)
+        plain_refresh = generate_refresh_token()
+        session_id = uuid.uuid4()
+        self._refresh_repository.create(
+            user_id=user.id,
+            plain_token=plain_refresh,
+            session_id=session_id,
+            user_agent=user_agent,
+            ip_address=ip_address,
+        )
+        response = LoginResponse(
+            user=UserPublic.model_validate(user),
+            tokens=TokenResponse(
+                access_token=access_token,
+                expires_in=expires_in,
+            ),
+        )
+        return response, plain_refresh
 
     def _authenticate_credentials(self, email: str, password: str) -> User:
         """Validate email/password and return the user."""
