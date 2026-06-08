@@ -12,6 +12,8 @@ dependencies = [
     "pydantic-settings>=2.6.0",
     "psycopg[binary]>=3.2.0",
     "redis>=5.2.0",
+    "argon2-cffi>=25.1.0",
+    "email-validator>=2.3.0",
 ]
 
 [dependency-groups]
@@ -36,6 +38,9 @@ src = ["app", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/modules/**/router.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -122,7 +122,18 @@ uv run alembic revision --autogenerate -m "description"
 uv run alembic upgrade head
 ```
 
-Aucune migration métier dans TICKET-003.
+## Auth (TICKET-006A)
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /api/auth/register` | Inscription email/mot de passe (Argon2id) |
+| `POST /api/auth/login` | Connexion — `tokens: null` jusqu'à TICKET-006B |
+
+```bash
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123!","full_name":"User"}'
+```
 
 ## Modules futurs
 
