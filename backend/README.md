@@ -2,7 +2,7 @@
 
 API FastAPI pour YurPass — identité, invitation, billetterie, check-in et accès aux expériences locales.
 
-> **FEATURE-AUTH-V1** — clôturée (006A → 006G). Sprint 2 : FEATURE-ORGANIZATIONS-V1.
+> **FEATURE-AUTH-V1** — clôturée (006A → 006G). **FEATURE-ORGANIZATIONS-V1** — clôturée (007A → 007G).
 
 ## Stack
 
@@ -33,7 +33,7 @@ app/
     ├── audit/           # ✅ audit_logs (006G)
     ├── admin/           # ✅ diagnostic RBAC (006G)
     ├── users/
-    ├── organizations/   # placeholder Sprint 2
+    ├── organizations/   # ✅ FEATURE-ORGANIZATIONS-V1
     ├── events/
     ├── invitations/
     ├── tickets/
@@ -146,7 +146,7 @@ Couche transverse livrée avec ADR-003 (ACCEPTED) :
 
 **Migrations auth head :** `20260608_005` (`audit_logs`)
 
-Tables : `users`, `organization_members` (placeholder), `refresh_tokens`, `auth_tokens`, `audit_logs`.
+Tables : `users`, `refresh_tokens`, `auth_tokens`, `audit_logs`.
 
 ### Admin — diagnostic RBAC
 
@@ -190,14 +190,82 @@ TURNSTILE_ENABLED=false
 
 Emails transactionnels : `dev_outbox` actif si `APP_ENV` ∈ `{dev, local}` (pas de provider SMTP en Auth V1).
 
+## Organizations (FEATURE-ORGANIZATIONS-V1 — 007A → 007G)
+
+Référence : `../docs/adr/ADR-004-organizations-foundation.md`
+
+**Migrations head :** `20260608_007` (`organizations`, `organization_members` activée)
+
+Tables : `organizations`, `organization_members` (FK `users` + `organizations`, UNIQUE `(user_id, organization_id)`, slug UNIQUE).
+
+### Endpoints organization (007D)
+
+| Method | Path | RBAC org |
+|--------|------|----------|
+| `POST` | `/api/organizations` | Utilisateur authentifié (devient `owner`) |
+| `GET` | `/api/organizations` | Membre actif (liste ses orgs non archivées) |
+| `GET` | `/api/organizations/{organization_id}` | `owner`, `admin`, `staff`, `viewer` |
+| `PATCH` | `/api/organizations/{organization_id}` | `owner`, `admin` |
+| `DELETE` | `/api/organizations/{organization_id}` | `owner` — archive logique (`status=archived`) |
+
+### Endpoints members (007E)
+
+| Method | Path | RBAC org |
+|--------|------|----------|
+| `GET` | `/api/organizations/{organization_id}/members` | `owner`, `admin`, `staff` — actifs par défaut ; `?include_inactive=true` **owner only** |
+| `POST` | `/api/organizations/{organization_id}/members` | `owner`, `admin` — user existant uniquement |
+| `PATCH` | `/api/organizations/{organization_id}/members/{member_id}` | `owner` — rôles `admin`/`staff`/`viewer` |
+| `DELETE` | `/api/organizations/{organization_id}/members/{member_id}` | `owner` retire un autre membre ; `admin`/`staff`/`viewer` self-leave — **owner self-leave interdit** |
+
+### Rôles organisationnels
+
+| Rôle | Permissions clés |
+|------|------------------|
+| `owner` | CRUD org, archive, gestion membres, changement rôles |
+| `admin` | Lecture/update org, liste/ajout membres |
+| `staff` | Lecture org + membres |
+| `viewer` | Lecture org uniquement |
+
+RBAC via `require_org_roles(*OrganizationRole)` — jamais de `str` libre.
+
+### Owner protection
+
+- Créateur = `owner` actif automatiquement à la création
+- `count_active_owners() >= 1` toujours
+- Dernier owner : PATCH rôle et DELETE refusés (`last_owner_protected`)
+- Owner **ne peut pas** self-leave (même multi-owner)
+- Rôle `owner` : **pas** via POST/PATCH members API (futur transfert ownership)
+
+### Archive logique
+
+- `DELETE /api/organizations/{id}` → `status=archived` (pas de suppression physique)
+- Orgs archivées exclues de `GET /api/organizations` pour les membres
+- Les lignes `organization_members` sont **préservées**
+
+### Audit (007F)
+
+Actions : `organization_created`, `organization_updated`, `organization_archived`, `organization_member_added`, `organization_member_role_updated`, `organization_member_removed`, `organization_rbac_super_admin_bypass`.
+
+Conventions : `resource_type=organization` ou `organization_member` ; metadata inclut `organization_id` (obligatoire sur actions member), `actor_role`, `target_user_id` si applicable.
+
+### Exemple
+
+```bash
+curl -X POST http://localhost:8000/api/organizations \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Club Paris","type":"nightclub","city":"Paris","country":"FR"}'
+```
+
 ## Roadmap modules
 
-S1 Auth ✅ → **S2 Organizations** → S3 Events → S4 Invitations → S5 Ticketing/Stripe → ...
+S1 Auth ✅ → S2 Organizations ✅ → S3 Events → S4 Invitations → S5 Ticketing/Stripe → ...
 
 ## Documentation projet
 
 - ADR-001 Monorepo : `../docs/adr/ADR-001-monorepo-modulaire.md`
 - ADR-002 Auth Foundation : `../docs/adr/ADR-002-auth-foundation.md`
 - ADR-003 Security & RBAC : `../docs/adr/ADR-003-security-rbac-foundation.md`
+- ADR-004 Organizations : `../docs/adr/ADR-004-organizations-foundation.md`
 - Sécurité : `../docs/security/SECURITY_BASELINE.md`
 - Gouvernance IA : `../docs/architecture/AI_WORKFLOW.md`
