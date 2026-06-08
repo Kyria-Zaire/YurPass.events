@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.modules.auth.constants import (
@@ -62,10 +62,19 @@ class AuthTokenRepository:
         return self._session.scalar(statement)
 
     def consume(self, record: AuthToken) -> bool:
-        """Mark token as consumed — returns False if already consumed."""
-        if record.consumed_at is not None:
+        """Atomically mark token as consumed — returns False if already consumed."""
+        now = datetime.now(UTC)
+        statement = (
+            update(AuthToken)
+            .where(
+                AuthToken.id == record.id,
+                AuthToken.consumed_at.is_(None),
+            )
+            .values(consumed_at=now)
+            .returning(AuthToken.consumed_at)
+        )
+        consumed_at = self._session.scalar(statement)
+        if consumed_at is None:
             return False
-        record.consumed_at = datetime.now(UTC)
-        self._session.add(record)
-        self._session.flush()
+        record.consumed_at = consumed_at
         return True
