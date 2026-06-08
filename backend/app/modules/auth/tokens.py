@@ -21,6 +21,11 @@ class TokenError(Exception):
         super().__init__(message)
 
 
+def generate_otp_code() -> str:
+    """Generate a cryptographically secure 6-digit OTP code."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
 def generate_opaque_token() -> str:
     """Generate a cryptographically secure opaque token."""
     return secrets.token_urlsafe(48)

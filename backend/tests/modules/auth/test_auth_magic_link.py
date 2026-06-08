@@ -239,6 +239,8 @@ def test_no_extra_auth_endpoints_beyond_scope() -> None:
         "/reset-password",
         "/request-magic-link",
         "/verify-magic-link",
+        "/request-otp",
+        "/verify-otp",
     }
     actual = {route.path for route in auth_router.routes if hasattr(route, "methods")}
     assert actual == expected

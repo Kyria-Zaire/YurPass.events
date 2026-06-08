@@ -36,3 +36,10 @@ class AuthTokenError(YurPassError):
 
     def __init__(self, message: str = "Invalid or expired token") -> None:
         super().__init__(message=message, code="invalid_auth_token")
+
+
+class InvalidOtpError(YurPassError):
+    """OTP code is invalid, expired, or cannot be used."""
+
+    def __init__(self) -> None:
+        super().__init__(message="invalid_otp", code="invalid_otp")

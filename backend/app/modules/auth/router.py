@@ -21,10 +21,12 @@ from app.modules.auth.schemas import (
     RegisterRequest,
     RegisterResponse,
     RequestMagicLinkRequest,
+    RequestOtpRequest,
     RequestPasswordResetRequest,
     ResetPasswordRequest,
     VerifyEmailRequest,
     VerifyMagicLinkRequest,
+    VerifyOtpRequest,
 )
 from app.modules.auth.service import AuthService
 
@@ -179,6 +181,34 @@ def verify_magic_link(
     """Complete passwordless login using a one-time magic link token."""
     login_response, plain_refresh = service.verify_magic_link(
         payload.token,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=_client_ip(request),
+    )
+    set_refresh_cookie(response, plain_refresh, settings)
+    return login_response
+
+
+@router.post("/request-otp", response_model=MessageResponse)
+def request_otp(
+    payload: RequestOtpRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    """Request an email OTP login code — stable response for unknown emails."""
+    return service.request_otp(str(payload.email))
+
+
+@router.post("/verify-otp", response_model=LoginResponse)
+def verify_otp(
+    payload: VerifyOtpRequest,
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+    settings: Settings = Depends(get_settings),
+) -> LoginResponse:
+    """Complete passwordless login using an email OTP code."""
+    login_response, plain_refresh = service.verify_otp(
+        str(payload.email),
+        payload.code,
         user_agent=request.headers.get("user-agent"),
         ip_address=_client_ip(request),
     )

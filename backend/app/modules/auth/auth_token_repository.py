@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.modules.auth.constants import (
     EMAIL_VERIFICATION_EXPIRE_HOURS,
     MAGIC_LINK_EXPIRE_MINUTES,
+    OTP_LOGIN_EXPIRE_MINUTES,
     PASSWORD_RESET_EXPIRE_MINUTES,
     AuthTokenType,
 )
@@ -34,6 +35,8 @@ class AuthTokenRepository:
             expires_at = datetime.now(UTC) + timedelta(hours=EMAIL_VERIFICATION_EXPIRE_HOURS)
         elif token_type == AuthTokenType.MAGIC_LINK:
             expires_at = datetime.now(UTC) + timedelta(minutes=MAGIC_LINK_EXPIRE_MINUTES)
+        elif token_type == AuthTokenType.OTP_LOGIN:
+            expires_at = datetime.now(UTC) + timedelta(minutes=OTP_LOGIN_EXPIRE_MINUTES)
         else:
             expires_at = datetime.now(UTC) + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
 
@@ -59,6 +62,24 @@ class AuthTokenRepository:
         statement = select(AuthToken).where(
             AuthToken.token_hash == token_hash,
             AuthToken.token_type == token_type.value,
+            AuthToken.consumed_at.is_(None),
+            AuthToken.expires_at > now,
+        )
+        return self._session.scalar(statement)
+
+    def get_valid_for_user_by_plain_token(
+        self,
+        plain_token: str,
+        token_type: AuthTokenType,
+        user_id: uuid.UUID,
+    ) -> AuthToken | None:
+        """Return an active token for a specific user and plain value."""
+        token_hash = hash_opaque_token(plain_token)
+        now = datetime.now(UTC)
+        statement = select(AuthToken).where(
+            AuthToken.token_hash == token_hash,
+            AuthToken.token_type == token_type.value,
+            AuthToken.user_id == user_id,
             AuthToken.consumed_at.is_(None),
             AuthToken.expires_at > now,
         )

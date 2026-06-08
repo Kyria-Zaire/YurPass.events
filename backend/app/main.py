@@ -11,6 +11,7 @@ from app.modules.auth.exceptions import (
     AuthTokenError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
+    InvalidOtpError,
     RefreshTokenError,
 )
 from app.modules.auth.router import router as auth_router
@@ -67,6 +68,14 @@ async def auth_token_error_handler(
     exc: AuthTokenError,
 ) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": exc.message, "code": exc.code})
+
+
+@app.exception_handler(InvalidOtpError)
+async def invalid_otp_error_handler(
+    _request: Request,
+    exc: InvalidOtpError,
+) -> JSONResponse:
+    return JSONResponse(status_code=401, content={"detail": exc.message, "code": exc.code})
 
 
 @app.get("/api/health", response_model=HealthResponse, tags=["health"])

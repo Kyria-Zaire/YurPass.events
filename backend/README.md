@@ -137,6 +137,8 @@ uv run alembic upgrade head
 | `POST /api/auth/reset-password` | Nouveau mot de passe via token |
 | `POST /api/auth/request-magic-link` | Demande lien magique passwordless |
 | `POST /api/auth/verify-magic-link` | Connexion via token magic link |
+| `POST /api/auth/request-otp` | Demande code OTP email (6 chiffres) |
+| `POST /api/auth/verify-otp` | Connexion via code OTP email |
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \

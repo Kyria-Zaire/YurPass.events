@@ -11,6 +11,7 @@ from app.modules.auth.exceptions import (
     AuthTokenError,
     EmailAlreadyRegisteredError,
     InvalidCredentialsError,
+    InvalidOtpError,
     RefreshTokenError,
 )
 from app.modules.auth.models import User
@@ -30,6 +31,7 @@ from app.modules.auth.schemas import (
 from app.modules.auth.tokens import (
     create_access_token,
     generate_opaque_token,
+    generate_otp_code,
     generate_refresh_token,
 )
 
@@ -255,6 +257,54 @@ class AuthService:
 
         if user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
             raise AccountInactiveError(status=user.status.value)
+
+        user = self._repository.update_last_login(user)
+        return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)
+
+    def request_otp(self, email: str) -> MessageResponse:
+        """Issue OTP login code — stable response regardless of email existence."""
+        normalized_email = normalize_email(email)
+        user = self._repository.get_by_email(normalized_email)
+        if user is not None and user.status not in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            otp_code = generate_otp_code()
+            self._auth_token_repository.create(
+                user_id=user.id,
+                plain_token=otp_code,
+                token_type=AuthTokenType.OTP_LOGIN,
+            )
+            record_dev_auth_link(
+                settings=self._settings,
+                kind="otp_login",
+                email=user.email,
+                plain_token=otp_code,
+                path="/api/auth/verify-otp",
+            )
+        return MessageResponse(message="otp_requested")
+
+    def verify_otp(
+        self,
+        email: str,
+        code: str,
+        *,
+        user_agent: str | None = None,
+        ip_address: str | None = None,
+    ) -> tuple[LoginResponse, str]:
+        """Consume OTP code and issue a full login session."""
+        normalized_email = normalize_email(email)
+        user = self._repository.get_by_email(normalized_email)
+        if user is None or user.status in {UserStatus.SUSPENDED, UserStatus.DELETED}:
+            raise InvalidOtpError()
+
+        record = self._auth_token_repository.get_valid_for_user_by_plain_token(
+            code,
+            AuthTokenType.OTP_LOGIN,
+            user.id,
+        )
+        if record is None:
+            raise InvalidOtpError()
+
+        if not self._auth_token_repository.consume(record):
+            raise InvalidOtpError()
 
         user = self._repository.update_last_login(user)
         return self._issue_session(user, user_agent=user_agent, ip_address=ip_address)

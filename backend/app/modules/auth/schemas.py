@@ -89,6 +89,19 @@ class RequestMagicLinkRequest(BaseModel):
     email: EmailStr
 
 
+class RequestOtpRequest(BaseModel):
+    """Payload to request an email OTP login code."""
+
+    email: EmailStr
+
+
+class VerifyOtpRequest(BaseModel):
+    """Payload to verify an email OTP login code."""
+
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class RequestPasswordResetRequest(BaseModel):
     """Payload to request a password reset email."""
 

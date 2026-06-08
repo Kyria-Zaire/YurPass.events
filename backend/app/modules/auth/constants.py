@@ -26,8 +26,10 @@ class AuthTokenType(StrEnum):
     EMAIL_VERIFICATION = "email_verification"
     PASSWORD_RESET = "password_reset"
     MAGIC_LINK = "magic_link"
+    OTP_LOGIN = "otp_login"
 
 
 EMAIL_VERIFICATION_EXPIRE_HOURS = 24
 PASSWORD_RESET_EXPIRE_MINUTES = 30
 MAGIC_LINK_EXPIRE_MINUTES = 15
+OTP_LOGIN_EXPIRE_MINUTES = 5
