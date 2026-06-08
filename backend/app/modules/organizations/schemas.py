@@ -1,1 +1,49 @@
-﻿"""Organizations Pydantic schemas — placeholder for future request/response models."""
+﻿"""Organizations Pydantic schemas."""
+
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.modules.organizations.constants import OrganizationStatus, OrganizationType
+
+
+class OrganizationBase(BaseModel):
+    """Shared organization fields."""
+
+    name: str = Field(min_length=1, max_length=255)
+    type: OrganizationType
+    description: str | None = None
+    logo_url: str | None = Field(default=None, max_length=2048)
+    website_url: str | None = Field(default=None, max_length=2048)
+    city: str | None = Field(default=None, max_length=255)
+    country: str | None = Field(default=None, max_length=2)
+
+
+class OrganizationCreate(OrganizationBase):
+    """Payload for creating an organization — slug resolved in later tickets."""
+
+
+class OrganizationUpdate(BaseModel):
+    """Payload for partial organization updates."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    type: OrganizationType | None = None
+    description: str | None = None
+    logo_url: str | None = Field(default=None, max_length=2048)
+    website_url: str | None = Field(default=None, max_length=2048)
+    city: str | None = Field(default=None, max_length=255)
+    country: str | None = Field(default=None, max_length=2)
+
+
+class OrganizationPublic(OrganizationBase):
+    """Public organization representation."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    slug: str
+    status: OrganizationStatus
+    created_by_user_id: UUID
+    created_at: datetime
+    updated_at: datetime
